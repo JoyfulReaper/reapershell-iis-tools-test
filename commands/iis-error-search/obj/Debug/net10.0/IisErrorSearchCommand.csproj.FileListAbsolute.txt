@@ -1,0 +1,16 @@
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\bin\Debug\net10.0\IisErrorSearchCommand.deps.json
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\bin\Debug\net10.0\IisErrorSearchCommand.dll
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\bin\Debug\net10.0\IisErrorSearchCommand.pdb
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\bin\Debug\net10.0\ReaperShell.Abstractions.dll
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\bin\Debug\net10.0\ReaperShell.Abstractions.pdb
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.csproj.AssemblyReference.cache
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.GeneratedMSBuildEditorConfig.editorconfig
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.AssemblyInfoInputs.cache
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.AssemblyInfo.cs
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.csproj.CoreCompileInputs.cache
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.sourcelink.json
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisError.AE88F877.Up2Date
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.dll
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\refint\IisErrorSearchCommand.dll
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\IisErrorSearchCommand.pdb
+C:\GitHub\ReaperShell\src\ReaperShell\bin\Debug\net10.0\.rsh\repos\iis-tools\commands\iis-error-search\obj\Debug\net10.0\ref\IisErrorSearchCommand.dll

@@ -1,0 +1,6 @@
+{
+  "id": "iis-tools",
+  "name": "iis-tools Pack",
+  "description": "Generated command pack \u0027iis-tools\u0027.",
+  "commandsPath": "commands"
+}
