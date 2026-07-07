@@ -25,7 +25,7 @@ public static class IisErrorSearchRenderer
 
     public static void WriteWarning(ShellContext context, string message)
     {
-        context.WriteErrorLine(message);
+        context.WriteWarningLine(message);
     }
 
     public static void WriteAppMatches(ShellContext context, IReadOnlyCollection<AppMatch> appMatches)
@@ -34,14 +34,14 @@ public static class IisErrorSearchRenderer
 
         if (appMatches.Count == 0)
         {
-            context.WriteLine("No app/stdout matches found.");
+            context.WriteSuccessLine("No app/stdout matches found.");
             return;
         }
 
         foreach (var match in appMatches)
         {
             context.WriteLine("");
-            context.WriteLine($"APP MATCH  {match.File}:{match.LineNumber}");
+            context.WriteLine($"APP MATCH  {match.File}:{match.LineNumber}", ShellTextColor.Red);
             if (match.HasParsedTimestamp)
             {
                 context.WriteLine($"  Time:    {match.SortTimeUtc:u}");
@@ -63,14 +63,14 @@ public static class IisErrorSearchRenderer
 
         if (iisMatches.Count == 0)
         {
-            context.WriteLine("No IIS log matches found.");
+            context.WriteSuccessLine("No IIS log matches found.");
             return;
         }
 
         foreach (var match in iisMatches)
         {
             context.WriteLine("");
-            context.WriteLine($"HTTP {match.Status}  {SanitizeDisplay(match.Method)} {SanitizeDisplay(match.Url)}");
+            context.WriteLine($"HTTP {match.Status}  {SanitizeDisplay(match.Method)} {SanitizeDisplay(match.Url)}", GetStatusColor(match.Status));
             context.WriteLine($"  Time:       {SanitizeDisplay(match.Date)} {SanitizeDisplay(match.Time)} UTC");
             context.WriteLine($"  IIS:        {match.Status}.{SanitizeDisplay(match.SubStatus)}  Win32={SanitizeDisplay(match.Win32Status)}  Took={FormatTimeTaken(match.TimeTakenMs)}");
             context.WriteLine($"  File:       {match.File}:{match.LineNumber}");
@@ -93,7 +93,7 @@ public static class IisErrorSearchRenderer
 
         if (iisMatches.Count == 0)
         {
-            context.WriteLine("No IIS log matches to summarize.");
+            context.WriteSuccessLine("No IIS log matches to summarize.");
             return;
         }
 
@@ -101,7 +101,7 @@ public static class IisErrorSearchRenderer
                      .GroupBy(match => match.Status)
                      .OrderBy(group => group.Key))
         {
-            context.WriteLine($"HTTP {group.Key}: {group.Count()}");
+            context.WriteLine($"HTTP {group.Key}: {group.Count()}", GetStatusColor(group.Key));
         }
 
         context.WriteLine("");
@@ -113,7 +113,7 @@ public static class IisErrorSearchRenderer
                      .Take(10))
         {
             var statusBreakdown = FormatStatusBreakdown(group);
-            context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)} ({statusBreakdown})");
+            context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)} ({statusBreakdown})", GetWorstStatusColor(group));
         }
     }
 
@@ -166,12 +166,12 @@ public static class IisErrorSearchRenderer
             return;
         }
 
-        context.WriteLine("No IIS log files were found.");
-        context.WriteLine("`--iis-log` selects log files. To search for bot traffic, use `--user-agent bot` or `--iis-contains bot`.");
+        context.WriteWarningLine("No IIS log files were found.");
+        context.WriteWarningLine("`--iis-log` selects log files. To search for bot traffic, use `--user-agent bot` or `--iis-contains bot`.");
 
         if (requestedGlobs.Any(looksSuspicious))
         {
-            context.WriteLine("The supplied `--iis-log` value looks more like a search term than a file path.");
+            context.WriteWarningLine("The supplied `--iis-log` value looks more like a search term than a file path.");
         }
     }
 
@@ -237,6 +237,66 @@ public static class IisErrorSearchRenderer
         return displayOrder == MatchDisplayOrder.NewestFirst
             ? "newest-to-oldest"
             : "oldest-to-newest";
+    }
+
+    private static ShellTextColor GetStatusColor(int status)
+    {
+        if (status >= 500)
+        {
+            return ShellTextColor.Red;
+        }
+
+        if (status >= 400)
+        {
+            return ShellTextColor.Yellow;
+        }
+
+        if (status >= 200 && status < 400)
+        {
+            return ShellTextColor.Green;
+        }
+
+        return ShellTextColor.Default;
+    }
+
+    private static ShellTextColor GetWorstStatusColor(IEnumerable<IisMatch> matches)
+    {
+        var hasRed = false;
+        var hasYellow = false;
+        var hasGreen = false;
+
+        foreach (var match in matches)
+        {
+            switch (GetStatusColor(match.Status))
+            {
+                case ShellTextColor.Red:
+                    hasRed = true;
+                    break;
+                case ShellTextColor.Yellow:
+                    hasYellow = true;
+                    break;
+                case ShellTextColor.Green:
+                    hasGreen = true;
+                    break;
+            }
+        }
+
+        if (hasRed)
+        {
+            return ShellTextColor.Red;
+        }
+
+        if (hasYellow)
+        {
+            return ShellTextColor.Yellow;
+        }
+
+        if (hasGreen)
+        {
+            return ShellTextColor.Green;
+        }
+
+        return ShellTextColor.Default;
     }
 
     private static string FormatTimeTaken(string value)

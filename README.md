@@ -288,6 +288,16 @@ Example:
 13x  /api/stats (404 x12, 502 x1)
 ```
 
+### Color Output
+
+When run inside a ReaperShell host with color support, `iis-error-search` uses semantic colors:
+
+- red for 5xx responses and app/stdout error matches
+- yellow for 4xx responses and warnings
+- green for clean/no-match messages
+
+ReaperShell controls whether colors are emitted, so redirected output stays plain text.
+
 ### Status fields
 
 - `sc-status` is the main HTTP status code, such as `200`, `404`, or `500`

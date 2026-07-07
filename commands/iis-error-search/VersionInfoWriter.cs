@@ -22,7 +22,7 @@ public static class VersionInfoWriter
         context.WriteLine($"Git Branch: {BuildInfo.GitBranch}");
         context.WriteLine($"Git Commit: {BuildInfo.GitCommit}");
         context.WriteLine($"Git Commit Short: {BuildInfo.GitCommitShort}");
-        context.WriteLine($"Git Dirty: {BuildInfo.GitDirty}");
+        context.WriteLine($"Git Dirty: {BuildInfo.GitDirty}", GetDirtyColor());
         context.WriteLine($"Build UTC: {BuildInfo.BuildUtc}");
         context.WriteLine($"Assembly Path: {assemblyPath}");
     }
@@ -34,5 +34,14 @@ public static class VersionInfoWriter
         context.WriteLine("");
         context.WriteLine("Options:");
         context.WriteLine("  --help   Show this help. Aliases: -h, /?.");
+    }
+
+    private static ShellTextColor GetDirtyColor()
+    {
+        return BuildInfo.GitDirty.Equals("true", System.StringComparison.OrdinalIgnoreCase)
+            ? ShellTextColor.Yellow
+            : BuildInfo.GitDirty.Equals("false", System.StringComparison.OrdinalIgnoreCase)
+                ? ShellTextColor.Green
+                : ShellTextColor.Default;
     }
 }
