@@ -112,7 +112,8 @@ public static class IisErrorSearchRenderer
                      .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
                      .Take(10))
         {
-            context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)}");
+            var statusBreakdown = FormatStatusBreakdown(group);
+            context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)} ({statusBreakdown})");
         }
     }
 
@@ -246,6 +247,16 @@ public static class IisErrorSearchRenderer
         }
 
         return $"{SanitizeDisplay(value)}ms";
+    }
+
+    private static string FormatStatusBreakdown(IEnumerable<IisMatch> matches)
+    {
+        return string.Join(
+            ", ",
+            matches
+                .GroupBy(match => match.Status)
+                .OrderBy(group => group.Key)
+                .Select(group => $"{group.Key} x{group.Count()}"));
     }
 
     private static string SanitizeDisplay(string value)

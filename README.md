@@ -280,7 +280,13 @@ By default, each section is displayed oldest-to-newest after the newest `--last`
 
 ### Summary
 
-The summary groups IIS matches by HTTP status and then lists the most frequent URLs.
+The summary groups IIS matches by HTTP status and then lists the most frequent URLs with per-URL status breakdowns.
+
+Example:
+
+```text
+13x  /api/stats (404 x12, 502 x1)
+```
 
 ### Status fields
 
