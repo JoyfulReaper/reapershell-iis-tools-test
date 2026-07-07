@@ -114,6 +114,13 @@ public sealed class IisErrorSearchOptionsParser
                         return false;
                     }
 
+                    if (options.AllStatuses)
+                    {
+                        context.WriteErrorLine("Choose either --status or --all-statuses, not both.");
+                        IisErrorSearchRenderer.WriteUsage(context);
+                        return false;
+                    }
+
                     if (!statusCodesOverridden)
                     {
                         options.IisStatusCodes.Clear();
@@ -225,8 +232,14 @@ public sealed class IisErrorSearchOptionsParser
                     break;
 
                 case "--all-statuses":
+                    if (options.HasExplicitStatusFilter)
+                    {
+                        context.WriteErrorLine("Choose either --status or --all-statuses, not both.");
+                        IisErrorSearchRenderer.WriteUsage(context);
+                        return false;
+                    }
+
                     options.AllStatuses = true;
-                    options.HasExplicitStatusFilter = false;
                     break;
 
                 default:

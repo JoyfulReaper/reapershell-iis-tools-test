@@ -20,7 +20,7 @@ public static class IisErrorSearchRenderer
             context.WriteLine($"Since filter: >= {options.SinceUtc.Value:O} UTC");
         }
 
-        context.WriteLine($"Showing newest {options.Last} result(s).");
+        context.WriteLine($"Showing newest {options.Last} app result(s) and newest {options.Last} IIS result(s).");
     }
 
     public static void WriteWarning(ShellContext context, string message)
@@ -42,8 +42,18 @@ public static class IisErrorSearchRenderer
         {
             context.WriteLine("");
             context.WriteLine($"APP MATCH  {match.File}:{match.LineNumber}");
-            context.WriteLine($"  Updated: {match.LastWriteTimeUtc:u}");
-            context.WriteLine($"  {match.Line}");
+            if (match.HasParsedTimestamp)
+            {
+                context.WriteLine($"  Time:    {match.SortTimeUtc:u}");
+                context.WriteLine($"  Updated: {match.LastWriteTimeUtc:u}");
+            }
+            else
+            {
+                context.WriteLine($"  Updated: {match.LastWriteTimeUtc:u}");
+                context.WriteLine("  Time:    not parsed; ordering/filtering used file updated time.");
+            }
+
+            context.WriteLine($"  {SanitizeDisplay(match.Line)}");
         }
     }
 
@@ -60,19 +70,19 @@ public static class IisErrorSearchRenderer
         foreach (var match in iisMatches)
         {
             context.WriteLine("");
-            context.WriteLine($"HTTP {match.Status}  {match.Method} {match.Url}");
-            context.WriteLine($"  Time:       {match.Date} {match.Time} UTC");
-            context.WriteLine($"  IIS:        {match.Status}.{match.SubStatus}  Win32={match.Win32Status}  Took={match.TimeTakenMs}ms");
+            context.WriteLine($"HTTP {match.Status}  {SanitizeDisplay(match.Method)} {SanitizeDisplay(match.Url)}");
+            context.WriteLine($"  Time:       {SanitizeDisplay(match.Date)} {SanitizeDisplay(match.Time)} UTC");
+            context.WriteLine($"  IIS:        {match.Status}.{SanitizeDisplay(match.SubStatus)}  Win32={SanitizeDisplay(match.Win32Status)}  Took={FormatTimeTaken(match.TimeTakenMs)}");
             context.WriteLine($"  File:       {match.File}:{match.LineNumber}");
 
             if (!string.IsNullOrWhiteSpace(match.Referer) && match.Referer != "-")
             {
-                context.WriteLine($"  Referer:    {match.Referer}");
+                context.WriteLine($"  Referer:    {SanitizeDisplay(match.Referer)}");
             }
 
             if (!string.IsNullOrWhiteSpace(match.UserAgent) && match.UserAgent != "-")
             {
-                context.WriteLine($"  Agent:      {match.UserAgent}");
+                context.WriteLine($"  Agent:      {SanitizeDisplay(match.UserAgent)}");
             }
         }
     }
@@ -102,7 +112,7 @@ public static class IisErrorSearchRenderer
                      .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
                      .Take(10))
         {
-            context.WriteLine($"{group.Count()}x  {group.Key}");
+            context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)}");
         }
     }
 
@@ -121,7 +131,7 @@ public static class IisErrorSearchRenderer
         context.WriteLine("  --user-agent <text>          Search decoded IIS user-agent text. Can be repeated.");
         context.WriteLine("  --ua <text>                  Alias for --user-agent.");
         context.WriteLine("  --url <text>                 Search the combined IIS URL. Can be repeated.");
-        context.WriteLine("  --last <count>               Number of newest results to show. Default: 100.");
+        context.WriteLine("  --last <count>               Number of newest results to show per section. Default: 100.");
         context.WriteLine("  --newest-files-only          Search only newest files.");
         context.WriteLine("  --newest-file-count <n>      Number of newest files when newest-only is enabled. Default: 10.");
         context.WriteLine("  --since <value>              Only show results at or after this time.");
@@ -137,6 +147,10 @@ public static class IisErrorSearchRenderer
         context.WriteLine("  iis-error-search --user-agent bot");
         context.WriteLine("  iis-error-search --iis-contains bot --all-statuses");
         context.WriteLine("  iis-error-search --iis-log \"C:\\inetpub\\logs\\LogFiles\\W3SVC*\\*.log\" --user-agent bot");
+        context.WriteLine("");
+        context.WriteLine("Notes:");
+        context.WriteLine("  --status and --all-statuses are mutually exclusive.");
+        context.WriteLine("  --last applies separately to app/stdout results and IIS results.");
     }
 
     public static void WriteIisFileHintIfNeeded(ShellContext context, IReadOnlyCollection<LogFile> iisFiles, IReadOnlyCollection<string> requestedGlobs)
@@ -210,5 +224,38 @@ public static class IisErrorSearchRenderer
         context.WriteLine("================================================================================");
         context.WriteLine($" {title}");
         context.WriteLine("================================================================================");
+    }
+
+    private static string FormatTimeTaken(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value == "-")
+        {
+            return "-";
+        }
+
+        return $"{SanitizeDisplay(value)}ms";
+    }
+
+    private static string SanitizeDisplay(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        var builder = new System.Text.StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            if (ch == '\t' || !char.IsControl(ch))
+            {
+                builder.Append(ch);
+            }
+            else
+            {
+                builder.Append('?');
+            }
+        }
+
+        return builder.ToString();
     }
 }

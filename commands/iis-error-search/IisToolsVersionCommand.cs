@@ -16,7 +16,20 @@ public sealed class IisToolsVersionCommand : IShellCommand
         IReadOnlyList<string> args,
         CancellationToken cancellationToken = default)
     {
-        VersionInfoWriter.Write(context);
-        return Task.FromResult(0);
+        if (args.Count == 0)
+        {
+            VersionInfoWriter.Write(context);
+            return Task.FromResult(0);
+        }
+
+        if (args.Count == 1 && args[0] is "--help" or "-h" or "/?")
+        {
+            VersionInfoWriter.WriteUsage(context);
+            return Task.FromResult(0);
+        }
+
+        context.WriteErrorLine($"Unknown option: {args[0]}");
+        VersionInfoWriter.WriteUsage(context);
+        return Task.FromResult(1);
     }
 }

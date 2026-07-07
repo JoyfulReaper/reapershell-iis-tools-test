@@ -26,4 +26,13 @@ public static class VersionInfoWriter
         context.WriteLine($"Build UTC: {BuildInfo.BuildUtc}");
         context.WriteLine($"Assembly Path: {assemblyPath}");
     }
+
+    public static void WriteUsage(ShellContext context)
+    {
+        context.WriteLine("Usage:");
+        context.WriteLine("  iis-tools-version [--help]");
+        context.WriteLine("");
+        context.WriteLine("Options:");
+        context.WriteLine("  --help   Show this help. Aliases: -h, /?.");
+    }
 }

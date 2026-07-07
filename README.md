@@ -141,11 +141,11 @@ iis-error-search [options]
 | `--iis-log <glob>` | Select IIS W3C log files to search. | Can be repeated. Alias: `--iis-log-path`. This selects files only and does not search text inside IIS logs. The first explicit use replaces the default IIS glob; later repeats append. |
 | `--pattern <text>` | Search app/stdout log lines for text. | Can be repeated. Alias: `--app-pattern`. The first explicit use replaces the default patterns; later repeats append. |
 | `--status <code[,code]>` | Filter IIS rows by HTTP status code. | Can be repeated. Alias: `--iis-status`. Comma-separated values are accepted. Valid range is `100` to `599`. The first explicit use replaces the default IIS status list; later repeats append. |
-| `--all-statuses` | Search IIS rows across all statuses. | Useful with IIS text filters when you do not want status filtering. |
+| `--all-statuses` | Search IIS rows across all statuses. | Mutually exclusive with `--status` / `--iis-status`. Useful with IIS text filters when you do not want status filtering. |
 | `--iis-contains <text>` | Search useful IIS row fields for text. | Can be repeated. Case-insensitive. |
 | `--user-agent <text>` | Search `cs(User-Agent)` for text. | Can be repeated. Case-insensitive. Alias: `--ua`. |
 | `--url <text>` | Search the combined IIS URL, including query string when present. | Can be repeated. Case-insensitive. |
-| `--last <count>` | Limit the number of newest results shown. | Default: `100`. |
+| `--last <count>` | Limit the number of newest results shown. | Applies separately to app/stdout results and IIS results. Default: `100`. |
 | `--newest-files-only` | Search only the newest files. | Uses `--newest-file-count` to decide how many files to keep. |
 | `--newest-file-count <n>` | Number of newest files to search when newest-only mode is enabled. | Default: `10`. |
 | `--since <value>` | Only show results at or after a cutoff time. | Accepts relative values like `30m`, `2h`, `1d`, or a local/ISO datetime string such as `2026-07-05T14:30:00`. |
@@ -158,7 +158,8 @@ iis-error-search [options]
 
 - If you pass IIS text filters such as `--iis-contains`, `--user-agent`, or `--url` without `--status`, the command searches all IIS statuses by default.
 - If you pass `--status`, it remains an explicit IIS status filter.
-- If you pass both text filters and `--all-statuses`, IIS status filtering is disabled entirely.
+- If you pass `--all-statuses`, IIS status filtering is disabled entirely.
+- `--status` and `--all-statuses` cannot be used together.
 - Relative paths are resolved from the shell working directory.
 - Repeated `--app-log`, `--iis-log`, `--pattern`, and `--status` options append after the first explicit override.
 
@@ -169,8 +170,10 @@ Print build metadata for the loaded command pack.
 #### Syntax
 
 ```text
-iis-tools-version
+iis-tools-version [--help]
 ```
+
+Use `--help` to show the version command's usage text.
 
 #### What It Prints
 
@@ -365,4 +368,4 @@ Generated build artifacts live under `bin/` and `obj/`. Keep those directories o
 
 ## License
 
-No explicit license file is included in this repository.
+This repository is licensed under the MIT License. See the `LICENSE` file for the full text.

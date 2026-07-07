@@ -171,7 +171,9 @@ public sealed class LogFileFinder
     {
         try
         {
-            return Directory.EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly);
+            return Directory
+                .EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly)
+                .ToArray();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
         {
@@ -184,7 +186,9 @@ public sealed class LogFileFinder
     {
         try
         {
-            return Directory.EnumerateDirectories(directory, pattern, SearchOption.TopDirectoryOnly);
+            return Directory
+                .EnumerateDirectories(directory, pattern, SearchOption.TopDirectoryOnly)
+                .ToArray();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
         {
