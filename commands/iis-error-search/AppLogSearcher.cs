@@ -4,19 +4,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using ReaperShell.Abstractions;
 
 namespace IisErrorSearchCommand;
 
 public sealed class AppLogSearcher
 {
-    private readonly ShellContext _context;
-
-    public AppLogSearcher(ShellContext context)
-    {
-        _context = context;
-    }
-
     public List<AppMatch> Search(
         IReadOnlyCollection<LogFile> appFiles,
         IReadOnlyCollection<string> patterns,

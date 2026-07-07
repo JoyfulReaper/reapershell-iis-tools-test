@@ -5,11 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Version>1.0.0</Version>
+    <ReaperShellAbstractionsProject Condition="'$(ReaperShellAbstractionsProject)' == '' and Exists('..\..\..\ReaperShell\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj')">..\..\..\ReaperShell\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj</ReaperShellAbstractionsProject>
+    <ReaperShellAbstractionsProject Condition="'$(ReaperShellAbstractionsProject)' == '' and Exists('..\..\..\..\..\..\..\..\..\..\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj')">..\..\..\..\..\..\..\..\..\..\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj</ReaperShellAbstractionsProject>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\ReaperShell\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj" />
+  <ItemGroup Condition="'$(ReaperShellAbstractionsProject)' != ''">
+    <ProjectReference Include="$(ReaperShellAbstractionsProject)" />
   </ItemGroup>
+
+  <Target Name="ValidateReaperShellAbstractionsProject" BeforeTargets="Restore">
+    <Error Condition="'$(ReaperShellAbstractionsProject)' == ''" Text="Could not locate ReaperShell.Abstractions.csproj. Pass /p:ReaperShellAbstractionsProject=&quot;path\to\ReaperShell.Abstractions.csproj&quot;." />
+  </Target>
 
   <Target Name="GenerateBuildInfo" BeforeTargets="GenerateAssemblyInfo">
     <PropertyGroup>
@@ -50,13 +56,27 @@
       <_BuildInfoLines Include="{" />
       <_BuildInfoLines Include="internal static partial class BuildInfo" />
       <_BuildInfoLines Include="{" />
-      <_BuildInfoLines Include="    public const string CommandPackName = &quot;IIS Tools Command Pack&quot;%3B" />
-      <_BuildInfoLines Include="    public const string BuildConfiguration = &quot;$(Configuration)&quot;%3B" />
-      <_BuildInfoLines Include="    public const string GitBranch = &quot;$(_GitBranch)&quot;%3B" />
-      <_BuildInfoLines Include="    public const string GitCommit = &quot;$(_GitCommit)&quot;%3B" />
-      <_BuildInfoLines Include="    public const string GitCommitShort = &quot;$(_GitCommitShort)&quot;%3B" />
-      <_BuildInfoLines Include="    public const string GitDirty = &quot;$(_GitDirty)&quot;%3B" />
-      <_BuildInfoLines Include="    public const string BuildUtc = &quot;$(_BuildUtc)&quot;%3B" />
+      <_BuildInfoLines Include="    public static string CommandPackName => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="IIS Tools Command Pack" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
+      <_BuildInfoLines Include="    public static string BuildConfiguration => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="$(Configuration)" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
+      <_BuildInfoLines Include="    public static string GitBranch => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="$(_GitBranch)" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
+      <_BuildInfoLines Include="    public static string GitCommit => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="$(_GitCommit)" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
+      <_BuildInfoLines Include="    public static string GitCommitShort => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="$(_GitCommitShort)" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
+      <_BuildInfoLines Include="    public static string GitDirty => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="$(_GitDirty)" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
+      <_BuildInfoLines Include="    public static string BuildUtc => &quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;" />
+      <_BuildInfoLines Include="$(_BuildUtc)" />
+      <_BuildInfoLines Include="&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;%3B" />
       <_BuildInfoLines Include="}" />
       <_BuildInfoLines Include="}" />
     </ItemGroup>

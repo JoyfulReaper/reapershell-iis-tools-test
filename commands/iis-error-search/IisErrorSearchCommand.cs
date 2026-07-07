@@ -54,7 +54,7 @@ public sealed class IisErrorSearchCommand : IShellCommand
         IisErrorSearchRenderer.WriteRunHeader(context, options, appFiles.Count, iisFiles.Count);
         IisErrorSearchRenderer.WriteIisFileHintIfNeeded(context, iisFiles, options.IisLogPaths);
 
-        var appSearcher = new AppLogSearcher(context);
+        var appSearcher = new AppLogSearcher();
         var appMatches = appSearcher.Search(
             appFiles,
             options.AppPatterns,

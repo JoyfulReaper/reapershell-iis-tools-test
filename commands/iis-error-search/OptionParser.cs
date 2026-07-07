@@ -128,7 +128,13 @@ public sealed class IisErrorSearchOptionsParser
                     {
                         if (!int.TryParse(statusPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var statusCode))
                         {
-                            context.WriteErrorLine($"Invalid status code: {statusPart}");
+                            context.WriteErrorLine($"Invalid HTTP status code: {statusPart}. Status codes must be between 100 and 599.");
+                            return false;
+                        }
+
+                        if (statusCode < 100 || statusCode > 599)
+                        {
+                            context.WriteErrorLine($"Invalid HTTP status code: {statusPart}. Status codes must be between 100 and 599.");
                             return false;
                         }
 

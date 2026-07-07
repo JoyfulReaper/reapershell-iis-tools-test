@@ -49,11 +49,11 @@ public static class IisErrorSearchRenderer
 
     public static void WriteIisMatches(ShellContext context, IReadOnlyCollection<IisMatch> iisMatches)
     {
-        WriteSection(context, "IIS ERROR MATCHES");
+        WriteSection(context, "IIS LOG MATCHES");
 
         if (iisMatches.Count == 0)
         {
-            context.WriteLine("No IIS error status matches found.");
+            context.WriteLine("No IIS log matches found.");
             return;
         }
 
@@ -83,7 +83,7 @@ public static class IisErrorSearchRenderer
 
         if (iisMatches.Count == 0)
         {
-            context.WriteLine("No IIS errors to summarize.");
+            context.WriteLine("No IIS log matches to summarize.");
             return;
         }
 
