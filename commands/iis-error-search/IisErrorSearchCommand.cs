@@ -29,6 +29,12 @@ public sealed class IisErrorSearchCommand : IShellCommand
             return Task.FromResult(0);
         }
 
+        if (options.ShowVersion)
+        {
+            VersionInfoWriter.Write(context);
+            return Task.FromResult(0);
+        }
+
         Action<string>? warningWriter = null;
         if (options.Verbose)
         {

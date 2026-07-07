@@ -51,6 +51,8 @@ public sealed class IisErrorSearchOptions
 
     public bool ShowHelp { get; set; }
 
+    public bool ShowVersion { get; set; }
+
     public bool Verbose { get; set; }
 
     public bool FailOnMatch { get; set; }

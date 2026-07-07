@@ -4,10 +4,68 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\ReaperShell\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj" />
   </ItemGroup>
+
+  <Target Name="GenerateBuildInfo" BeforeTargets="GenerateAssemblyInfo">
+    <PropertyGroup>
+      <_BuildInfoFile>$(IntermediateOutputPath)BuildInfo.g.cs</_BuildInfoFile>
+      <_GitBranch>unknown</_GitBranch>
+      <_GitCommit>unknown</_GitCommit>
+      <_GitCommitShort>unknown</_GitCommitShort>
+      <_GitDirty>unknown</_GitDirty>
+      <_BuildUtc>$([System.DateTime]::UtcNow.ToString("O"))</_BuildUtc>
+    </PropertyGroup>
+
+    <Exec Command='git -C "$(MSBuildProjectDirectory)" rev-parse --abbrev-ref HEAD' ConsoleToMsBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_GitBranchLines" />
+    </Exec>
+    <Exec Command='git -C "$(MSBuildProjectDirectory)" rev-parse HEAD' ConsoleToMsBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_GitCommitLines" />
+    </Exec>
+    <Exec Command='git -C "$(MSBuildProjectDirectory)" rev-parse --short HEAD' ConsoleToMsBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_GitCommitShortLines" />
+    </Exec>
+    <Exec Command='git -C "$(MSBuildProjectDirectory)" status --porcelain' ConsoleToMsBuild="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_GitStatusLines" />
+    </Exec>
+
+    <PropertyGroup>
+      <_GitBranch Condition="'@(_GitBranchLines)' != ''">@(_GitBranchLines)</_GitBranch>
+      <_GitCommit Condition="'@(_GitCommitLines)' != ''">@(_GitCommitLines)</_GitCommit>
+      <_GitCommitShort Condition="'@(_GitCommitShortLines)' != ''">@(_GitCommitShortLines)</_GitCommitShort>
+      <_GitDirty Condition="'@(_GitBranchLines)' != '' and '@(_GitCommitLines)' != '' and '@(_GitStatusLines)' == ''">false</_GitDirty>
+      <_GitDirty Condition="'@(_GitStatusLines)' != ''">true</_GitDirty>
+      <AssemblyConfiguration>$(Configuration)</AssemblyConfiguration>
+      <InformationalVersion Condition="'@(_GitCommitShortLines)' != ''">$(Version)+$(_GitCommitShort)</InformationalVersion>
+      <InformationalVersion Condition="'@(_GitCommitShortLines)' == ''">$(Version)+unknown</InformationalVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_BuildInfoLines Include="namespace IisErrorSearchCommand" />
+      <_BuildInfoLines Include="{" />
+      <_BuildInfoLines Include="internal static partial class BuildInfo" />
+      <_BuildInfoLines Include="{" />
+      <_BuildInfoLines Include="    public const string CommandPackName = &quot;IIS Tools Command Pack&quot;%3B" />
+      <_BuildInfoLines Include="    public const string BuildConfiguration = &quot;$(Configuration)&quot;%3B" />
+      <_BuildInfoLines Include="    public const string GitBranch = &quot;$(_GitBranch)&quot;%3B" />
+      <_BuildInfoLines Include="    public const string GitCommit = &quot;$(_GitCommit)&quot;%3B" />
+      <_BuildInfoLines Include="    public const string GitCommitShort = &quot;$(_GitCommitShort)&quot;%3B" />
+      <_BuildInfoLines Include="    public const string GitDirty = &quot;$(_GitDirty)&quot;%3B" />
+      <_BuildInfoLines Include="    public const string BuildUtc = &quot;$(_BuildUtc)&quot;%3B" />
+      <_BuildInfoLines Include="}" />
+      <_BuildInfoLines Include="}" />
+    </ItemGroup>
+
+    <WriteLinesToFile File="$(_BuildInfoFile)" Lines="@(_BuildInfoLines)" Overwrite="true" />
+
+    <ItemGroup>
+      <Compile Include="$(_BuildInfoFile)" Visible="false" AutoGen="true" DesignTime="true" />
+    </ItemGroup>
+  </Target>
 
 </Project>

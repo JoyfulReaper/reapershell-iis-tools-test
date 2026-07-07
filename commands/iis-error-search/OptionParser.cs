@@ -12,6 +12,7 @@ public sealed class IisErrorSearchOptionsParser
         "--help",
         "-h",
         "/?",
+        "--version",
         "--app-log",
         "--app-log-path",
         "--iis-log",
@@ -52,6 +53,10 @@ public sealed class IisErrorSearchOptionsParser
                 case "-h":
                 case "/?":
                     options.ShowHelp = true;
+                    return true;
+
+                case "--version":
+                    options.ShowVersion = true;
                     return true;
 
                 case "--app-log":

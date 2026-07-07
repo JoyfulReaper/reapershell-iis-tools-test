@@ -12,6 +12,8 @@ dotnet build commands\iis-error-search\IisErrorSearchCommand.csproj
 
 ```text
 iis-error-search --help
+iis-tools-version
+iis-error-search --version
 iis-error-search --app-log ".\logs\*.log" --iis-log "C:\inetpub\logs\LogFiles\W3SVC*\*.log"
 iis-error-search --pattern "Exception" --status 404,500 --last 25
 iis-error-search --since 2h --verbose
@@ -42,3 +44,4 @@ iis-error-search --user-agent bot
 - `--verbose` prints warnings for skipped paths and unreadable files.
 - `--fail-on-match` returns exit code `2` when any matches are found.
 - When you use IIS text filters without `--status`, the command searches all IIS statuses by default.
+- `iis-tools-version` and `iis-error-search --version` report metadata embedded when the DLL was built, which helps spot stale loaded command packs.

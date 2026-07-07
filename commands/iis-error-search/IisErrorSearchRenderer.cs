@@ -128,7 +128,8 @@ public static class IisErrorSearchRenderer
         context.WriteLine("                               Examples: 30m, 2h, 1d, 2026-07-05T14:30:00");
         context.WriteLine("  --verbose                    Print warnings for skipped paths/files.");
         context.WriteLine("  --fail-on-match              Return exit code 2 if any matches are found.");
-        context.WriteLine("  --help                     Show this help.");
+        context.WriteLine("  --version                    Show loaded command pack version/build info.");
+        context.WriteLine("  --help                       Show this help.");
         context.WriteLine("");
         context.WriteLine("Examples:");
         context.WriteLine("  iis-error-search");
