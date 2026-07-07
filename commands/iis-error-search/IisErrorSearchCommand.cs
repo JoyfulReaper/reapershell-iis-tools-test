@@ -46,6 +46,7 @@ public sealed class IisErrorSearchCommand : IShellCommand
         }
 
         IisErrorSearchRenderer.WriteRunHeader(context, options, appFiles.Count, iisFiles.Count);
+        IisErrorSearchRenderer.WriteIisFileHintIfNeeded(context, iisFiles, options.IisLogPaths);
 
         var appSearcher = new AppLogSearcher(context);
         var appMatches = appSearcher.Search(
@@ -62,10 +63,7 @@ public sealed class IisErrorSearchCommand : IShellCommand
         var iisSearcher = new IisW3cLogSearcher(new IisW3cParser());
         var iisMatches = iisSearcher.Search(
             iisFiles,
-            options.IisStatusCodes,
-            options.Last,
-            options.SinceUtc,
-            options.Verbose,
+            options,
             warningWriter,
             cancellationToken);
 

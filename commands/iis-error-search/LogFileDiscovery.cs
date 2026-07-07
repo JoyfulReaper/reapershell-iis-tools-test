@@ -47,6 +47,7 @@ public sealed class LogFileFinder
                     var fileInfo = new FileInfo(filePath);
                     if (!fileInfo.Exists)
                     {
+                        Warn($"Skipping file '{filePath}': not found.");
                         continue;
                     }
 

@@ -25,7 +25,12 @@ public sealed class IisErrorSearchOptionsParser
         "--newest-file-count",
         "--since",
         "--verbose",
-        "--fail-on-match"
+        "--fail-on-match",
+        "--iis-contains",
+        "--user-agent",
+        "--ua",
+        "--url",
+        "--all-statuses"
     };
 
     public bool TryParse(ShellContext context, IReadOnlyList<string> args, out IisErrorSearchOptions options)
@@ -110,6 +115,9 @@ public sealed class IisErrorSearchOptionsParser
                         statusCodesOverridden = true;
                     }
 
+                    options.AllStatuses = false;
+                    options.HasExplicitStatusFilter = true;
+
                     var parsedAnyStatus = false;
                     foreach (var statusPart in statusValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                     {
@@ -175,6 +183,39 @@ public sealed class IisErrorSearchOptionsParser
 
                 case "--fail-on-match":
                     options.FailOnMatch = true;
+                    break;
+
+                case "--iis-contains":
+                    if (!TryReadOptionValue(context, args, ref index, arg, out var iisContains))
+                    {
+                        return false;
+                    }
+
+                    options.IisContainsPatterns.Add(iisContains);
+                    break;
+
+                case "--user-agent":
+                case "--ua":
+                    if (!TryReadOptionValue(context, args, ref index, arg, out var userAgent))
+                    {
+                        return false;
+                    }
+
+                    options.UserAgentPatterns.Add(userAgent);
+                    break;
+
+                case "--url":
+                    if (!TryReadOptionValue(context, args, ref index, arg, out var url))
+                    {
+                        return false;
+                    }
+
+                    options.UrlPatterns.Add(url);
+                    break;
+
+                case "--all-statuses":
+                    options.AllStatuses = true;
+                    options.HasExplicitStatusFilter = false;
                     break;
 
                 default:

@@ -14,6 +14,7 @@ public static class IisErrorSearchRenderer
     {
         context.WriteLine($"App log files: {appFileCount}");
         context.WriteLine($"IIS log files: {iisFileCount}");
+        WriteIisFilterSummary(context, options);
         if (options.SinceUtc is not null)
         {
             context.WriteLine($"Since filter: >= {options.SinceUtc.Value:O} UTC");
@@ -111,18 +112,95 @@ public static class IisErrorSearchRenderer
         context.WriteLine("  iis-error-search [options]");
         context.WriteLine("");
         context.WriteLine("Options:");
-        context.WriteLine("  --app-log <glob>           App/stdout log glob. Can be repeated.");
-        context.WriteLine("  --iis-log <glob>           IIS W3C log glob. Can be repeated.");
-        context.WriteLine("  --pattern <text>           App/stdout search pattern. Can be repeated.");
-        context.WriteLine("  --status <code[,code]>     IIS status code filter. Can be repeated.");
-        context.WriteLine("  --last <count>             Number of newest results to show. Default: 100.");
-        context.WriteLine("  --newest-files-only        Search only newest files.");
-        context.WriteLine("  --newest-file-count <n>    Number of newest files when newest-only is enabled. Default: 10.");
-        context.WriteLine("  --since <value>            Only show results at or after this time.");
-        context.WriteLine("                             Examples: 30m, 2h, 1d, 2026-07-05T14:30:00");
-        context.WriteLine("  --verbose                  Print warnings for skipped paths/files.");
-        context.WriteLine("  --fail-on-match            Return exit code 2 if any matches are found.");
+        context.WriteLine("  --app-log <glob>             App/stdout log glob. Can be repeated.");
+        context.WriteLine("  --iis-log <glob>             IIS W3C log file glob. Can be repeated.");
+        context.WriteLine("  --pattern <text>             App/stdout search pattern. Can be repeated.");
+        context.WriteLine("  --status <code[,code]>       Explicit IIS status code filter. Can be repeated.");
+        context.WriteLine("  --all-statuses               Search IIS rows across all status codes.");
+        context.WriteLine("  --iis-contains <text>        Search IIS row content. Can be repeated.");
+        context.WriteLine("  --user-agent <text>          Search decoded IIS user-agent text. Can be repeated.");
+        context.WriteLine("  --ua <text>                  Alias for --user-agent.");
+        context.WriteLine("  --url <text>                 Search the combined IIS URL. Can be repeated.");
+        context.WriteLine("  --last <count>               Number of newest results to show. Default: 100.");
+        context.WriteLine("  --newest-files-only          Search only newest files.");
+        context.WriteLine("  --newest-file-count <n>      Number of newest files when newest-only is enabled. Default: 10.");
+        context.WriteLine("  --since <value>              Only show results at or after this time.");
+        context.WriteLine("                               Examples: 30m, 2h, 1d, 2026-07-05T14:30:00");
+        context.WriteLine("  --verbose                    Print warnings for skipped paths/files.");
+        context.WriteLine("  --fail-on-match              Return exit code 2 if any matches are found.");
         context.WriteLine("  --help                     Show this help.");
+        context.WriteLine("");
+        context.WriteLine("Examples:");
+        context.WriteLine("  iis-error-search");
+        context.WriteLine("  iis-error-search --status 404,500");
+        context.WriteLine("  iis-error-search --user-agent bot");
+        context.WriteLine("  iis-error-search --iis-contains bot --all-statuses");
+        context.WriteLine("  iis-error-search --iis-log \"C:\\inetpub\\logs\\LogFiles\\W3SVC*\\*.log\" --user-agent bot");
+    }
+
+    public static void WriteIisFileHintIfNeeded(ShellContext context, IReadOnlyCollection<LogFile> iisFiles, IReadOnlyCollection<string> requestedGlobs)
+    {
+        if (iisFiles.Count > 0)
+        {
+            return;
+        }
+
+        context.WriteLine("No IIS log files were found.");
+        context.WriteLine("`--iis-log` selects log files. To search for bot traffic, use `--user-agent bot` or `--iis-contains bot`.");
+
+        if (requestedGlobs.Any(looksSuspicious))
+        {
+            context.WriteLine("The supplied `--iis-log` value looks more like a search term than a file path.");
+        }
+    }
+
+    private static void WriteIisFilterSummary(ShellContext context, IisErrorSearchOptions options)
+    {
+        if (options.IisContainsPatterns.Count == 0 &&
+            options.UserAgentPatterns.Count == 0 &&
+            options.UrlPatterns.Count == 0 &&
+            !options.AllStatuses &&
+            !options.HasExplicitStatusFilter)
+        {
+            context.WriteLine($"IIS status filter: default error statuses ({string.Join(", ", options.IisStatusCodes)})");
+            return;
+        }
+
+        if (options.AllStatuses)
+        {
+            context.WriteLine("IIS status filter: all statuses");
+        }
+        else if (options.HasExplicitStatusFilter)
+        {
+            context.WriteLine($"IIS status filter: {string.Join(", ", options.IisStatusCodes)}");
+        }
+        else if (options.HasIisTextFilters)
+        {
+            context.WriteLine("IIS status filter: all statuses (text filters active)");
+        }
+
+        if (options.IisContainsPatterns.Count > 0)
+        {
+            context.WriteLine($"IIS contains: {string.Join(", ", options.IisContainsPatterns)}");
+        }
+
+        if (options.UserAgentPatterns.Count > 0)
+        {
+            context.WriteLine($"IIS user-agent: {string.Join(", ", options.UserAgentPatterns)}");
+        }
+
+        if (options.UrlPatterns.Count > 0)
+        {
+            context.WriteLine($"IIS URL: {string.Join(", ", options.UrlPatterns)}");
+        }
+    }
+
+    private static bool looksSuspicious(string glob)
+    {
+        return !glob.Contains('\\') &&
+               !glob.Contains('/') &&
+               !glob.Contains(':') &&
+               glob.IndexOfAny(['*', '?']) >= 0;
     }
 
     private static void WriteSection(ShellContext context, string title)

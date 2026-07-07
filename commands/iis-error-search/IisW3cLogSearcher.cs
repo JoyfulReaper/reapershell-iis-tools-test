@@ -18,14 +18,12 @@ public sealed class IisW3cLogSearcher
 
     public List<IisMatch> Search(
         IReadOnlyCollection<LogFile> iisFiles,
-        IReadOnlyCollection<int> statusCodes,
-        int last,
-        DateTimeOffset? sinceUtc,
-        bool verbose,
+        IisErrorSearchOptions options,
         Action<string>? warningWriter,
         CancellationToken cancellationToken)
     {
         var matches = new List<IisMatch>();
+        var applyStatusFilter = ShouldApplyStatusFilter(options);
 
         foreach (var file in iisFiles)
         {
@@ -57,33 +55,30 @@ public sealed class IisW3cLogSearcher
                         continue;
                     }
 
-                    if (sinceUtc.HasValue && !row.TimestampUtc.HasValue)
-                    {
-                        continue;
-                    }
-
                     if (!row.Fields.TryGetValue("sc-status", out var statusRaw) ||
                         !int.TryParse(statusRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var status))
                     {
                         continue;
                     }
 
-                    if (!statusCodes.Contains(status))
+                    var url = BuildUrl(row.Fields);
+                    var userAgent = FormatUserAgent(GetRowValue(row.Fields, "cs(User-Agent)"));
+                    var combinedText = BuildCombinedText(row.Fields, url, userAgent, status);
+
+                    if (!MatchesFilters(options, url, userAgent, combinedText))
                     {
                         continue;
                     }
 
-                    if (sinceUtc.HasValue && row.TimestampUtc.HasValue && row.TimestampUtc.Value < sinceUtc.Value)
+                    if (applyStatusFilter && !options.IisStatusCodes.Contains(status))
                     {
                         continue;
                     }
 
-                    var uriStem = GetRowValue(row.Fields, "cs-uri-stem");
-                    var uriQuery = GetRowValue(row.Fields, "cs-uri-query");
-                    var url = uriStem;
-                    if (!string.IsNullOrWhiteSpace(uriQuery) && uriQuery != "-")
+                    var effectiveTimestampUtc = row.TimestampUtc ?? new DateTimeOffset(file.LastWriteTimeUtc, TimeSpan.Zero);
+                    if (options.SinceUtc.HasValue && effectiveTimestampUtc < options.SinceUtc.Value)
                     {
-                        url = $"{uriStem}?{uriQuery}";
+                        continue;
                     }
 
                     matches.Add(new IisMatch(
@@ -100,12 +95,12 @@ public sealed class IisW3cLogSearcher
                         GetRowValue(row.Fields, "sc-win32-status"),
                         GetRowValue(row.Fields, "time-taken"),
                         GetRowValue(row.Fields, "cs(Referer)"),
-                        FormatUserAgent(GetRowValue(row.Fields, "cs(User-Agent)"))));
+                        userAgent));
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
             {
-                Warn(verbose, warningWriter, $"Skipping IIS log '{file.FullName}': {ex.Message}");
+                Warn(options.Verbose, warningWriter, $"Skipping IIS log '{file.FullName}': {ex.Message}");
             }
         }
 
@@ -113,8 +108,77 @@ public sealed class IisW3cLogSearcher
             .OrderByDescending(match => match.SortTimeUtc ?? new DateTimeOffset(match.LastWriteTimeUtc, TimeSpan.Zero))
             .ThenByDescending(match => match.File, StringComparer.OrdinalIgnoreCase)
             .ThenByDescending(match => match.LineNumber)
-            .Take(last)
+            .Take(options.Last)
             .ToList();
+    }
+
+    private static bool ShouldApplyStatusFilter(IisErrorSearchOptions options)
+    {
+        if (options.AllStatuses)
+        {
+            return false;
+        }
+
+        if (options.HasExplicitStatusFilter)
+        {
+            return true;
+        }
+
+        return !options.HasIisTextFilters;
+    }
+
+    private static bool MatchesFilters(
+        IisErrorSearchOptions options,
+        string url,
+        string userAgent,
+        string combinedText)
+    {
+        return MatchesAny(combinedText, options.IisContainsPatterns) &&
+               MatchesAny(userAgent, options.UserAgentPatterns) &&
+               MatchesAny(url, options.UrlPatterns);
+    }
+
+    private static string BuildUrl(IReadOnlyDictionary<string, string> row)
+    {
+        var uriStem = GetRowValue(row, "cs-uri-stem");
+        var uriQuery = GetRowValue(row, "cs-uri-query");
+        if (!string.IsNullOrWhiteSpace(uriQuery) && uriQuery != "-")
+        {
+            return $"{uriStem}?{uriQuery}";
+        }
+
+        return uriStem;
+    }
+
+    private static string BuildCombinedText(
+        IReadOnlyDictionary<string, string> row,
+        string url,
+        string userAgent,
+        int status)
+    {
+        return string.Join(
+            " ",
+            [
+                GetRowValue(row, "cs-method"),
+                url,
+                GetRowValue(row, "cs(Referer)"),
+                userAgent,
+                status.ToString(CultureInfo.InvariantCulture),
+                GetRowValue(row, "sc-substatus"),
+                GetRowValue(row, "sc-win32-status")
+            ]);
+    }
+
+    private static bool MatchesAny(string value, IReadOnlyCollection<string> patterns)
+    {
+        if (patterns.Count == 0)
+        {
+            return true;
+        }
+
+        return patterns.Any(pattern =>
+            !string.IsNullOrWhiteSpace(pattern) &&
+            value.Contains(pattern, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string GetRowValue(IReadOnlyDictionary<string, string> row, string key)

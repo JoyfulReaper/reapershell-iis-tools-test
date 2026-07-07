@@ -55,7 +55,22 @@ public sealed class IisErrorSearchOptions
 
     public bool FailOnMatch { get; set; }
 
+    public bool AllStatuses { get; set; }
+
+    public bool HasExplicitStatusFilter { get; set; }
+
+    public List<string> IisContainsPatterns { get; } = [];
+
+    public List<string> UserAgentPatterns { get; } = [];
+
+    public List<string> UrlPatterns { get; } = [];
+
     public DateTimeOffset? SinceUtc { get; set; }
 
     public string? SinceExpression { get; set; }
+
+    public bool HasIisTextFilters =>
+        IisContainsPatterns.Count > 0 ||
+        UserAgentPatterns.Count > 0 ||
+        UrlPatterns.Count > 0;
 }
