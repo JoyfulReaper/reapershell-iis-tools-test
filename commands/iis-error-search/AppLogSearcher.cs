@@ -13,6 +13,7 @@ public sealed class AppLogSearcher
         IReadOnlyCollection<LogFile> appFiles,
         IReadOnlyCollection<string> patterns,
         int last,
+        MatchDisplayOrder displayOrder,
         DateTimeOffset? sinceUtc,
         bool verbose,
         Action<string>? warningWriter,
@@ -67,12 +68,20 @@ public sealed class AppLogSearcher
             }
         }
 
-        return matches
+        var newestWindow = matches
             .OrderByDescending(match => match.SortTimeUtc)
             .ThenByDescending(match => match.File, StringComparer.OrdinalIgnoreCase)
             .ThenByDescending(match => match.LineNumber)
             .Take(last)
             .ToList();
+
+        return displayOrder == MatchDisplayOrder.NewestFirst
+            ? newestWindow
+            : newestWindow
+                .OrderBy(match => match.SortTimeUtc)
+                .ThenBy(match => match.File, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(match => match.LineNumber)
+                .ToList();
     }
 
     private static bool ContainsAnyPattern(string line, IReadOnlyCollection<string> patterns)

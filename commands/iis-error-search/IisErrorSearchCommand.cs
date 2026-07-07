@@ -59,6 +59,7 @@ public sealed class IisErrorSearchCommand : IShellCommand
             appFiles,
             options.AppPatterns,
             options.Last,
+            options.DisplayOrder,
             options.SinceUtc,
             options.Verbose,
             warningWriter,

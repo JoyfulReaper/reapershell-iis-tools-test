@@ -61,6 +61,12 @@ public sealed class IisErrorSearchOptions
 
     public bool HasExplicitStatusFilter { get; set; }
 
+    public MatchDisplayOrder DisplayOrder { get; set; } = MatchDisplayOrder.OldestFirst;
+
+    public bool HasExplicitOldestFirst { get; set; }
+
+    public bool HasExplicitNewestFirst { get; set; }
+
     public List<string> IisContainsPatterns { get; } = [];
 
     public List<string> UserAgentPatterns { get; } = [];

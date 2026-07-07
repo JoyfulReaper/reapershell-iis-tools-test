@@ -20,7 +20,7 @@ public static class IisErrorSearchRenderer
             context.WriteLine($"Since filter: >= {options.SinceUtc.Value:O} UTC");
         }
 
-        context.WriteLine($"Showing newest {options.Last} app result(s) and newest {options.Last} IIS result(s).");
+        context.WriteLine($"Showing newest {options.Last} app result(s) and newest {options.Last} IIS result(s), displayed {GetDisplayOrderLabel(options.DisplayOrder)}.");
     }
 
     public static void WriteWarning(ShellContext context, string message)
@@ -132,6 +132,8 @@ public static class IisErrorSearchRenderer
         context.WriteLine("  --ua <text>                  Alias for --user-agent.");
         context.WriteLine("  --url <text>                 Search the combined IIS URL. Can be repeated.");
         context.WriteLine("  --last <count>               Number of newest results to show per section. Default: 100.");
+        context.WriteLine("  --oldest-first               Display selected matches oldest-to-newest. Default.");
+        context.WriteLine("  --newest-first               Display selected matches newest-to-oldest.");
         context.WriteLine("  --newest-files-only          Search only newest files.");
         context.WriteLine("  --newest-file-count <n>      Number of newest files when newest-only is enabled. Default: 10.");
         context.WriteLine("  --since <value>              Only show results at or after this time.");
@@ -144,13 +146,16 @@ public static class IisErrorSearchRenderer
         context.WriteLine("Examples:");
         context.WriteLine("  iis-error-search");
         context.WriteLine("  iis-error-search --status 404,500");
+        context.WriteLine("  iis-error-search --last 50");
+        context.WriteLine("  iis-error-search --last 50 --newest-first");
         context.WriteLine("  iis-error-search --user-agent bot");
         context.WriteLine("  iis-error-search --iis-contains bot --all-statuses");
         context.WriteLine("  iis-error-search --iis-log \"C:\\inetpub\\logs\\LogFiles\\W3SVC*\\*.log\" --user-agent bot");
         context.WriteLine("");
         context.WriteLine("Notes:");
         context.WriteLine("  --status and --all-statuses are mutually exclusive.");
-        context.WriteLine("  --last applies separately to app/stdout results and IIS results.");
+        context.WriteLine("  --last selects the newest N matches per section.");
+        context.WriteLine("  Display order is controlled by --oldest-first / --newest-first.");
     }
 
     public static void WriteIisFileHintIfNeeded(ShellContext context, IReadOnlyCollection<LogFile> iisFiles, IReadOnlyCollection<string> requestedGlobs)
@@ -224,6 +229,13 @@ public static class IisErrorSearchRenderer
         context.WriteLine("================================================================================");
         context.WriteLine($" {title}");
         context.WriteLine("================================================================================");
+    }
+
+    private static string GetDisplayOrderLabel(MatchDisplayOrder displayOrder)
+    {
+        return displayOrder == MatchDisplayOrder.NewestFirst
+            ? "newest-to-oldest"
+            : "oldest-to-newest";
     }
 
     private static string FormatTimeTaken(string value)

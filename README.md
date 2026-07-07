@@ -149,6 +149,8 @@ iis-error-search [options]
 | `--newest-files-only` | Search only the newest files. | Uses `--newest-file-count` to decide how many files to keep. |
 | `--newest-file-count <n>` | Number of newest files to search when newest-only mode is enabled. | Default: `10`. |
 | `--since <value>` | Only show results at or after a cutoff time. | Accepts relative values like `30m`, `2h`, `1d`, or a local/ISO datetime string such as `2026-07-05T14:30:00`. |
+| `--oldest-first` | Display the selected matches oldest-to-newest. | Default. |
+| `--newest-first` | Display the selected matches newest-to-oldest. | Useful for quick triage. |
 | `--verbose` | Print warnings for skipped paths and unreadable files. | Warnings are written to the error stream. |
 | `--fail-on-match` | Return exit code `2` if any app or IIS matches are found. | Otherwise the command returns `0` for a successful run and `1` for invalid arguments. |
 | `--version` | Show loaded command pack version/build info. | Prints the same metadata as `iis-tools-version`. |
@@ -160,6 +162,8 @@ iis-error-search [options]
 - If you pass `--status`, it remains an explicit IIS status filter.
 - If you pass `--all-statuses`, IIS status filtering is disabled entirely.
 - `--status` and `--all-statuses` cannot be used together.
+- `--last` selects the newest N matches per section, but the default display order is oldest-to-newest.
+- Use `--newest-first` when you want the newest selected matches shown first for triage.
 - Relative paths are resolved from the shell working directory.
 - Repeated `--app-log`, `--iis-log`, `--pattern`, and `--status` options append after the first explicit override.
 
@@ -199,6 +203,8 @@ This command prints metadata embedded when the assembly was built, including:
 iis-error-search
 iis-error-search --status 404
 iis-error-search --status 404,500 --last 25
+iis-error-search --last 50
+iis-error-search --last 50 --newest-first
 iis-error-search --iis-log "C:\inetpub\logs\LogFiles\W3SVC*\*.log"
 iis-error-search --app-log ".\logs\*.log" --pattern Exception
 iis-error-search --newest-files-only --newest-file-count 3
@@ -269,6 +275,8 @@ Each IIS match includes:
 - source file and line number
 - referer when present
 - user agent when present
+
+By default, each section is displayed oldest-to-newest after the newest `--last` matches are selected. Use `--newest-first` if you prefer the reverse order for troubleshooting.
 
 ### Summary
 

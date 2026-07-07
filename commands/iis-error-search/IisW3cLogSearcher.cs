@@ -104,12 +104,25 @@ public sealed class IisW3cLogSearcher
             }
         }
 
-        return matches
-            .OrderByDescending(match => match.SortTimeUtc ?? new DateTimeOffset(match.LastWriteTimeUtc, TimeSpan.Zero))
+        var newestWindow = matches
+            .OrderByDescending(GetEffectiveSortTime)
             .ThenByDescending(match => match.File, StringComparer.OrdinalIgnoreCase)
             .ThenByDescending(match => match.LineNumber)
             .Take(options.Last)
             .ToList();
+
+        return options.DisplayOrder == MatchDisplayOrder.NewestFirst
+            ? newestWindow
+            : newestWindow
+                .OrderBy(GetEffectiveSortTime)
+                .ThenBy(match => match.File, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(match => match.LineNumber)
+                .ToList();
+    }
+
+    private static DateTimeOffset GetEffectiveSortTime(IisMatch match)
+    {
+        return match.SortTimeUtc ?? new DateTimeOffset(match.LastWriteTimeUtc, TimeSpan.Zero);
     }
 
     private static bool ShouldApplyStatusFilter(IisErrorSearchOptions options)

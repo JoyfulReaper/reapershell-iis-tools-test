@@ -31,7 +31,9 @@ public sealed class IisErrorSearchOptionsParser
         "--user-agent",
         "--ua",
         "--url",
-        "--all-statuses"
+        "--all-statuses",
+        "--oldest-first",
+        "--newest-first"
     };
 
     public bool TryParse(ShellContext context, IReadOnlyList<string> args, out IisErrorSearchOptions options)
@@ -240,6 +242,30 @@ public sealed class IisErrorSearchOptionsParser
                     }
 
                     options.AllStatuses = true;
+                    break;
+
+                case "--oldest-first":
+                    if (options.HasExplicitNewestFirst)
+                    {
+                        context.WriteErrorLine("Choose either --oldest-first or --newest-first, not both.");
+                        IisErrorSearchRenderer.WriteUsage(context);
+                        return false;
+                    }
+
+                    options.DisplayOrder = MatchDisplayOrder.OldestFirst;
+                    options.HasExplicitOldestFirst = true;
+                    break;
+
+                case "--newest-first":
+                    if (options.HasExplicitOldestFirst)
+                    {
+                        context.WriteErrorLine("Choose either --oldest-first or --newest-first, not both.");
+                        IisErrorSearchRenderer.WriteUsage(context);
+                        return false;
+                    }
+
+                    options.DisplayOrder = MatchDisplayOrder.NewestFirst;
+                    options.HasExplicitNewestFirst = true;
                     break;
 
                 default:
