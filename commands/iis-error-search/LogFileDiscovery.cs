@@ -5,15 +5,23 @@ using System.Linq;
 
 namespace IisErrorSearchCommand;
 
-public sealed class LogFileDiscovery
+public sealed class LogFileFinder
 {
-    private readonly Options _options;
+    private readonly IisErrorSearchOptions _options;
     private readonly string _workingDirectory;
+    private readonly bool _verbose;
+    private readonly Action<string>? _warningWriter;
 
-    public LogFileDiscovery(Options options, string workingDirectory)
+    public LogFileFinder(
+        IisErrorSearchOptions options,
+        string workingDirectory,
+        bool verbose,
+        Action<string>? warningWriter)
     {
         _options = options;
         _workingDirectory = workingDirectory;
+        _verbose = verbose;
+        _warningWriter = warningWriter;
     }
 
     public List<LogFile> DiscoverAppLogFiles()
@@ -46,9 +54,9 @@ public sealed class LogFileDiscovery
                         fileInfo.FullName,
                         fileInfo.LastWriteTimeUtc);
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException or PathTooLongException)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
                 {
-                    // Match the PowerShell script's "silently continue" behavior for bad paths/files.
+                    Warn($"Skipping '{filePath}': {ex.Message}");
                 }
             }
         }
@@ -66,8 +74,9 @@ public sealed class LogFileDiscovery
         {
             fullPattern = Path.GetFullPath(path, _workingDirectory);
         }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        catch (Exception ex) when (ex is ArgumentException or DirectoryNotFoundException)
         {
+            Warn($"Skipping path '{path}': {ex.Message}");
             yield break;
         }
 
@@ -95,7 +104,7 @@ public sealed class LogFileDiscovery
         }
     }
 
-    private static IEnumerable<string> ExpandGlobParts(string currentDirectory, IReadOnlyList<string> parts, int index)
+    private IEnumerable<string> ExpandGlobParts(string currentDirectory, IReadOnlyList<string> parts, int index)
     {
         if (index >= parts.Count)
         {
@@ -123,6 +132,10 @@ public sealed class LogFileDiscovery
             {
                 yield return filePath;
             }
+            else
+            {
+                Warn($"Skipping file '{filePath}': not found.");
+            }
 
             yield break;
         }
@@ -143,6 +156,7 @@ public sealed class LogFileDiscovery
         var nextDirectory = Path.Combine(currentDirectory, part);
         if (!Directory.Exists(nextDirectory))
         {
+            Warn($"Skipping directory '{nextDirectory}': not found.");
             yield break;
         }
 
@@ -152,26 +166,28 @@ public sealed class LogFileDiscovery
         }
     }
 
-    private static IEnumerable<string> SafeEnumerateFiles(string directory, string pattern)
+    private IEnumerable<string> SafeEnumerateFiles(string directory, string pattern)
     {
         try
         {
             return Directory.EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
         {
+            Warn($"Skipping directory '{directory}' pattern '{pattern}': {ex.Message}");
             return [];
         }
     }
 
-    private static IEnumerable<string> SafeEnumerateDirectories(string directory, string pattern)
+    private IEnumerable<string> SafeEnumerateDirectories(string directory, string pattern)
     {
         try
         {
             return Directory.EnumerateDirectories(directory, pattern, SearchOption.TopDirectoryOnly);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
         {
+            Warn($"Skipping directory '{directory}' pattern '{pattern}': {ex.Message}");
             return [];
         }
     }
@@ -180,5 +196,13 @@ public sealed class LogFileDiscovery
     {
         return value.Contains('*', StringComparison.Ordinal) ||
                value.Contains('?', StringComparison.Ordinal);
+    }
+
+    private void Warn(string message)
+    {
+        if (_verbose)
+        {
+            _warningWriter?.Invoke(message);
+        }
     }
 }

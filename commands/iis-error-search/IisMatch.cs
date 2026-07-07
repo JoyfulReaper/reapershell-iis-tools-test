@@ -1,8 +1,11 @@
 using System;
 
+using System;
+
 namespace IisErrorSearchCommand;
 
 public sealed record IisMatch(
+    DateTimeOffset? SortTimeUtc,
     string File,
     DateTime LastWriteTimeUtc,
     int LineNumber,

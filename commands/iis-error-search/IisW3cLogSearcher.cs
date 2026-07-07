@@ -3,26 +3,26 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using ReaperShell.Abstractions;
 
 namespace IisErrorSearchCommand;
 
 public sealed class IisW3cLogSearcher
 {
-    private const string FieldsHeader = "#Fields:";
-    private readonly ShellContext _context;
+    private readonly IisW3cParser _parser;
 
-    public IisW3cLogSearcher(ShellContext context)
+    public IisW3cLogSearcher(IisW3cParser parser)
     {
-        _context = context;
+        _parser = parser;
     }
 
     public List<IisMatch> Search(
         IReadOnlyCollection<LogFile> iisFiles,
         IReadOnlyCollection<int> statusCodes,
         int last,
+        DateTimeOffset? sinceUtc,
+        bool verbose,
+        Action<string>? warningWriter,
         CancellationToken cancellationToken)
     {
         var matches = new List<IisMatch>();
@@ -41,12 +41,9 @@ public sealed class IisW3cLogSearcher
                     cancellationToken.ThrowIfCancellationRequested();
                     lineNumber++;
 
-                    if (line.StartsWith(FieldsHeader, StringComparison.OrdinalIgnoreCase))
+                    if (_parser.TryReadFieldsHeader(line, out var parsedFields))
                     {
-                        fields = line[FieldsHeader.Length..]
-                            .Trim()
-                            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
+                        fields = parsedFields;
                         continue;
                     }
 
@@ -55,18 +52,18 @@ public sealed class IisW3cLogSearcher
                         continue;
                     }
 
-                    var row = ParseIisW3cLine(line, fields);
-                    if (row is null)
+                    if (!_parser.TryParseRow(line, fields, out var row))
                     {
                         continue;
                     }
 
-                    if (!row.TryGetValue("sc-status", out var statusRaw))
+                    if (sinceUtc.HasValue && !row.TimestampUtc.HasValue)
                     {
                         continue;
                     }
 
-                    if (!int.TryParse(statusRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var status))
+                    if (!row.Fields.TryGetValue("sc-status", out var statusRaw) ||
+                        !int.TryParse(statusRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var status))
                     {
                         continue;
                     }
@@ -76,103 +73,48 @@ public sealed class IisW3cLogSearcher
                         continue;
                     }
 
-                    var uriStem = GetRowValue(row, "cs-uri-stem");
-                    var uriQuery = GetRowValue(row, "cs-uri-query");
-                    var url = uriStem;
+                    if (sinceUtc.HasValue && row.TimestampUtc.HasValue && row.TimestampUtc.Value < sinceUtc.Value)
+                    {
+                        continue;
+                    }
 
+                    var uriStem = GetRowValue(row.Fields, "cs-uri-stem");
+                    var uriQuery = GetRowValue(row.Fields, "cs-uri-query");
+                    var url = uriStem;
                     if (!string.IsNullOrWhiteSpace(uriQuery) && uriQuery != "-")
                     {
                         url = $"{uriStem}?{uriQuery}";
                     }
 
                     matches.Add(new IisMatch(
+                        row.TimestampUtc,
                         file.FullName,
                         file.LastWriteTimeUtc,
                         lineNumber,
-                        GetRowValue(row, "date"),
-                        GetRowValue(row, "time"),
-                        GetRowValue(row, "cs-method"),
+                        GetRowValue(row.Fields, "date"),
+                        GetRowValue(row.Fields, "time"),
+                        GetRowValue(row.Fields, "cs-method"),
                         url,
                         status,
-                        GetRowValue(row, "sc-substatus"),
-                        GetRowValue(row, "sc-win32-status"),
-                        GetRowValue(row, "time-taken"),
-                        GetRowValue(row, "cs(Referer)"),
-                        FormatUserAgent(GetRowValue(row, "cs(User-Agent)"))));
+                        GetRowValue(row.Fields, "sc-substatus"),
+                        GetRowValue(row.Fields, "sc-win32-status"),
+                        GetRowValue(row.Fields, "time-taken"),
+                        GetRowValue(row.Fields, "cs(Referer)"),
+                        FormatUserAgent(GetRowValue(row.Fields, "cs(User-Agent)"))));
                 }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
             {
-                // Match the PowerShell script's "silently continue" behavior.
+                Warn(verbose, warningWriter, $"Skipping IIS log '{file.FullName}': {ex.Message}");
             }
         }
 
         return matches
-            .OrderByDescending(match => match.Date, StringComparer.Ordinal)
-            .ThenByDescending(match => match.Time, StringComparer.Ordinal)
+            .OrderByDescending(match => match.SortTimeUtc ?? new DateTimeOffset(match.LastWriteTimeUtc, TimeSpan.Zero))
             .ThenByDescending(match => match.File, StringComparer.OrdinalIgnoreCase)
             .ThenByDescending(match => match.LineNumber)
             .Take(last)
             .ToList();
-    }
-
-    private static Dictionary<string, string>? ParseIisW3cLine(string line, IReadOnlyList<string> fields)
-    {
-        if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
-        {
-            return null;
-        }
-
-        var values = TokenizeLine(line);
-        if (values.Count < fields.Count)
-        {
-            return null;
-        }
-
-        var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        for (var index = 0; index < fields.Count; index++)
-        {
-            row[fields[index]] = values[index];
-        }
-
-        return row;
-    }
-
-    private static List<string> TokenizeLine(string line)
-    {
-        var values = new List<string>();
-        var current = new StringBuilder();
-        var inQuotes = false;
-
-        foreach (var ch in line)
-        {
-            if (ch == '"')
-            {
-                inQuotes = !inQuotes;
-                continue;
-            }
-
-            if (ch == ' ' && !inQuotes)
-            {
-                if (current.Length > 0)
-                {
-                    values.Add(current.ToString());
-                    current.Clear();
-                }
-
-                continue;
-            }
-
-            current.Append(ch);
-        }
-
-        if (current.Length > 0)
-        {
-            values.Add(current.ToString());
-        }
-
-        return values;
     }
 
     private static string GetRowValue(IReadOnlyDictionary<string, string> row, string key)
@@ -196,6 +138,14 @@ public sealed class IisW3cLogSearcher
         catch (UriFormatException)
         {
             return userAgent.Replace("+", " ");
+        }
+    }
+
+    private static void Warn(bool verbose, Action<string>? warningWriter, string message)
+    {
+        if (verbose)
+        {
+            warningWriter?.Invoke(message);
         }
     }
 }

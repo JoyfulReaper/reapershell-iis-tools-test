@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 
 namespace IisErrorSearchCommand;
 
-public sealed class Options
+public sealed class IisErrorSearchOptions
 {
     public List<string> AppLogPaths { get; } =
     [
@@ -49,4 +50,12 @@ public sealed class Options
     public int NewestFileCount { get; set; } = 10;
 
     public bool ShowHelp { get; set; }
+
+    public bool Verbose { get; set; }
+
+    public bool FailOnMatch { get; set; }
+
+    public DateTimeOffset? SinceUtc { get; set; }
+
+    public string? SinceExpression { get; set; }
 }

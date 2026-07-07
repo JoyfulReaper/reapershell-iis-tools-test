@@ -5,7 +5,7 @@ using ReaperShell.Abstractions;
 
 namespace IisErrorSearchCommand;
 
-public sealed class OptionParser
+public sealed class IisErrorSearchOptionsParser
 {
     private static readonly HashSet<string> KnownOptions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -22,12 +22,15 @@ public sealed class OptionParser
         "--iis-status",
         "--last",
         "--newest-files-only",
-        "--newest-file-count"
+        "--newest-file-count",
+        "--since",
+        "--verbose",
+        "--fail-on-match"
     };
 
-    public bool TryParse(ShellContext context, IReadOnlyList<string> args, out Options options)
+    public bool TryParse(ShellContext context, IReadOnlyList<string> args, out IisErrorSearchOptions options)
     {
-        options = new Options();
+        options = new IisErrorSearchOptions();
 
         var appLogPathsOverridden = false;
         var iisLogPathsOverridden = false;
@@ -150,9 +153,33 @@ public sealed class OptionParser
                     options.NewestFileCount = newestFileCount;
                     break;
 
+                case "--since":
+                    if (!TryReadOptionValue(context, args, ref index, arg, out var sinceValue))
+                    {
+                        return false;
+                    }
+
+                    if (!TryParseSince(sinceValue, out var sinceUtc, out var sinceError))
+                    {
+                        context.WriteErrorLine(sinceError);
+                        return false;
+                    }
+
+                    options.SinceUtc = sinceUtc;
+                    options.SinceExpression = sinceValue;
+                    break;
+
+                case "--verbose":
+                    options.Verbose = true;
+                    break;
+
+                case "--fail-on-match":
+                    options.FailOnMatch = true;
+                    break;
+
                 default:
                     context.WriteErrorLine($"Unknown option: {arg}");
-                    CommandUsage.Write(context);
+                    IisErrorSearchRenderer.WriteUsage(context);
                     return false;
             }
         }
@@ -205,5 +232,64 @@ public sealed class OptionParser
     private static bool IsKnownOption(string arg)
     {
         return KnownOptions.Contains(arg);
+    }
+
+    private static bool TryParseSince(string value, out DateTimeOffset cutoffUtc, out string error)
+    {
+        error = string.Empty;
+        cutoffUtc = default;
+
+        if (TryParseRelativeSince(value, out var relativeCutoffUtc))
+        {
+            cutoffUtc = relativeCutoffUtc;
+            return true;
+        }
+
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal,
+                out var absoluteCutoff))
+        {
+            cutoffUtc = absoluteCutoff.ToUniversalTime();
+            return true;
+        }
+
+        error = "Invalid value for --since. Use values like 30m, 2h, 1d, or an ISO/local datetime.";
+        return false;
+    }
+
+    private static bool TryParseRelativeSince(string value, out DateTimeOffset cutoffUtc)
+    {
+        cutoffUtc = default;
+
+        if (value.Length < 2)
+        {
+            return false;
+        }
+
+        var suffix = value[^1];
+        var numberText = value[..^1];
+
+        if (!int.TryParse(numberText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount) || amount <= 0)
+        {
+            return false;
+        }
+
+        var span = suffix switch
+        {
+            'm' or 'M' => TimeSpan.FromMinutes(amount),
+            'h' or 'H' => TimeSpan.FromHours(amount),
+            'd' or 'D' => TimeSpan.FromDays(amount),
+            _ => TimeSpan.Zero
+        };
+
+        if (span == TimeSpan.Zero)
+        {
+            return false;
+        }
+
+        cutoffUtc = DateTimeOffset.UtcNow.Subtract(span);
+        return true;
     }
 }

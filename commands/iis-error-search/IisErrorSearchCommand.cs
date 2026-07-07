@@ -17,7 +17,7 @@ public sealed class IisErrorSearchCommand : IShellCommand
         IReadOnlyList<string> args,
         CancellationToken cancellationToken = default)
     {
-        var parser = new OptionParser();
+        var parser = new IisErrorSearchOptionsParser();
         if (!parser.TryParse(context, args, out var options))
         {
             return Task.FromResult(1);
@@ -25,13 +25,19 @@ public sealed class IisErrorSearchCommand : IShellCommand
 
         if (options.ShowHelp)
         {
-            CommandUsage.Write(context);
+            IisErrorSearchRenderer.WriteUsage(context);
             return Task.FromResult(0);
         }
 
-        var discovery = new LogFileDiscovery(options, context.WorkingDirectory.FullName);
-        var appFiles = discovery.DiscoverAppLogFiles();
-        var iisFiles = discovery.DiscoverIisLogFiles();
+        Action<string>? warningWriter = null;
+        if (options.Verbose)
+        {
+            warningWriter = message => IisErrorSearchRenderer.WriteWarning(context, message);
+        }
+
+        var finder = new LogFileFinder(options, context.WorkingDirectory.FullName, options.Verbose, warningWriter);
+        var appFiles = finder.DiscoverAppLogFiles();
+        var iisFiles = finder.DiscoverIisLogFiles();
 
         if (options.NewestFilesOnly)
         {
@@ -39,19 +45,37 @@ public sealed class IisErrorSearchCommand : IShellCommand
             iisFiles = iisFiles.Take(options.NewestFileCount).ToList();
         }
 
-        context.WriteLine($"App log files: {appFiles.Count}");
-        context.WriteLine($"IIS log files: {iisFiles.Count}");
-        context.WriteLine($"Showing newest {options.Last} result(s).");
+        IisErrorSearchRenderer.WriteRunHeader(context, options, appFiles.Count, iisFiles.Count);
 
         var appSearcher = new AppLogSearcher(context);
-        var iisSearcher = new IisW3cLogSearcher(context);
+        var appMatches = appSearcher.Search(
+            appFiles,
+            options.AppPatterns,
+            options.Last,
+            options.SinceUtc,
+            options.Verbose,
+            warningWriter,
+            cancellationToken);
 
-        var appMatches = appSearcher.Search(appFiles, options.AppPatterns, options.Last, cancellationToken);
-        OutputWriter.WriteAppMatches(context, appMatches);
+        IisErrorSearchRenderer.WriteAppMatches(context, appMatches);
 
-        var iisMatches = iisSearcher.Search(iisFiles, options.IisStatusCodes, options.Last, cancellationToken);
-        OutputWriter.WriteIisMatches(context, iisMatches);
-        OutputWriter.WriteSummary(context, iisMatches);
+        var iisSearcher = new IisW3cLogSearcher(new IisW3cParser());
+        var iisMatches = iisSearcher.Search(
+            iisFiles,
+            options.IisStatusCodes,
+            options.Last,
+            options.SinceUtc,
+            options.Verbose,
+            warningWriter,
+            cancellationToken);
+
+        IisErrorSearchRenderer.WriteIisMatches(context, iisMatches);
+        IisErrorSearchRenderer.WriteSummary(context, iisMatches);
+
+        if (options.FailOnMatch && (appMatches.Count > 0 || iisMatches.Count > 0))
+        {
+            return Task.FromResult(2);
+        }
 
         return Task.FromResult(0);
     }
