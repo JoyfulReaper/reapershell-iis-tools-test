@@ -34,6 +34,10 @@ It also supports IIS text filters for cases where you want to search the content
 
 `iis-tools-version` prints build metadata embedded when the DLL was built. `iis-error-search --version` prints the same information.
 
+## Origin
+
+`iis-tools` started as a small PowerShell log-searching script. After the original script was accidentally deleted, it was rebuilt as a monolithic C# command and then evolved into a real ReaperShell command pack. That path helped prove ReaperShell against an actual workflow instead of a toy demo, and it pushed improvements around repo loading, rebuilds, branch switching, and version diagnostics.
+
 ## Requirements
 
 - ReaperShell installed or built locally
