@@ -6,6 +6,6 @@ internal static class CursedShellIntegration
 {
     public static ICursedShell? TryGet(ShellContext context)
     {
-        return context.Services?.GetService<ICursedShell>();
+        return context.Services?.GetService(typeof(ICursedShell)) as ICursedShell;
     }
 }

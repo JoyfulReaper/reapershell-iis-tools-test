@@ -371,10 +371,22 @@ Build the command pack project with:
 dotnet build commands\iis-error-search\IisErrorSearchCommand.csproj
 ```
 
+Run tests:
+
+```powershell
+dotnet test tests\IisErrorSearchCommand.Tests\IisErrorSearchCommand.Tests.csproj
+```
+
 If your checkout layout does not let MSBuild locate `ReaperShell.Abstractions` automatically, pass the project path explicitly:
 
 ```powershell
 dotnet build commands\iis-error-search\IisErrorSearchCommand.csproj /p:ReaperShellAbstractionsProject="C:\GitHub\ReaperShell\src\ReaperShell.Abstractions\ReaperShell.Abstractions.csproj"
+```
+
+The same property can be passed to the test project:
+
+```powershell
+dotnet test tests\IisErrorSearchCommand.Tests\IisErrorSearchCommand.Tests.csproj /p:ReaperShellAbstractionsProject="path\to\ReaperShell.Abstractions.csproj"
 ```
 
 Manual smoke tests in ReaperShell:
