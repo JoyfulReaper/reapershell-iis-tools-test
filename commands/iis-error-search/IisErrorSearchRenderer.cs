@@ -169,10 +169,18 @@ public static class IisErrorSearchRenderer
         context.WriteWarningLine("No IIS log files were found.");
         context.WriteWarningLine("`--iis-log` selects log files. To search for bot traffic, use `--user-agent bot` or `--iis-contains bot`.");
 
-        if (requestedGlobs.Any(looksSuspicious))
+        if (requestedGlobs.Any(IsSuspiciousGlob))
         {
             context.WriteWarningLine("The supplied `--iis-log` value looks more like a search term than a file path.");
         }
+    }
+
+    internal static bool IsSuspiciousGlob(string glob)
+    {
+        return !glob.Contains('\\') &&
+               !glob.Contains('/') &&
+               !glob.Contains(':') &&
+               glob.IndexOfAny(['*', '?']) >= 0;
     }
 
     private static void WriteIisFilterSummary(ShellContext context, IisErrorSearchOptions options)
@@ -214,14 +222,6 @@ public static class IisErrorSearchRenderer
         {
             context.WriteLine($"IIS URL: {string.Join(", ", options.UrlPatterns)}");
         }
-    }
-
-    private static bool looksSuspicious(string glob)
-    {
-        return !glob.Contains('\\') &&
-               !glob.Contains('/') &&
-               !glob.Contains(':') &&
-               glob.IndexOfAny(['*', '?']) >= 0;
     }
 
     private static void WriteSection(ShellContext context, string title)

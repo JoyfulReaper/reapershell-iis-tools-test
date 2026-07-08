@@ -5,7 +5,7 @@ namespace IisErrorSearchCommand;
 
 public static class VersionInfoWriter
 {
-    public static void Write(ShellContext context)
+    public static void Write(ShellContext context, ReaperShell.Abstractions.ICursedShell? curse = null)
     {
         var assembly = Assembly.GetExecutingAssembly();
         var assemblyName = assembly.GetName();
@@ -25,6 +25,12 @@ public static class VersionInfoWriter
         context.WriteLine($"Git Dirty: {BuildInfo.GitDirty}", GetDirtyColor());
         context.WriteLine($"Build UTC: {BuildInfo.BuildUtc}");
         context.WriteLine($"Assembly Path: {assemblyPath}");
+
+        if (curse?.IsEnabled == true)
+        {
+            context.WriteLine($"Curse-aware: yes");
+            context.WriteLine($"Cursed shell mood: {curse.Mood}");
+        }
     }
 
     public static void WriteUsage(ShellContext context)

@@ -317,6 +317,14 @@ Use it when you want to confirm:
 - whether the loaded DLL came from a dirty working tree
 - which assembly path ReaperShell loaded
 
+## Cursed Mode Integration
+
+When loaded into a ReaperShell host with cursed mode enabled, IIS Tools may add harmless curse journal entries or small bits of flavor around log searches. This does not change search results, output contracts, or exit codes.
+
+- `iis-error-search` may react to clean logs, 5xx results, bot filters, or suspicious `--iis-log` usage.
+- `iis-tools-version` may report that it is curse-aware.
+- Older or non-cursed hosts behave normally.
+
 ## Troubleshooting
 
 - `No IIS log files found`
