@@ -63,9 +63,10 @@ public sealed class IisW3cLogSearcher
 
                     var url = BuildUrl(row.Fields);
                     var userAgent = FormatUserAgent(GetRowValue(row.Fields, "cs(User-Agent)"));
-                    var combinedText = BuildCombinedText(row.Fields, url, userAgent, status);
+                    var clientIp = GetRowValue(row.Fields, "c-ip");
+                    var combinedText = BuildCombinedText(row.Fields, url, userAgent, clientIp, status);
 
-                    if (!MatchesFilters(options, url, userAgent, combinedText))
+                    if (!MatchesFilters(options, url, userAgent, clientIp, combinedText))
                     {
                         continue;
                     }
@@ -95,7 +96,8 @@ public sealed class IisW3cLogSearcher
                         GetRowValue(row.Fields, "sc-win32-status"),
                         GetRowValue(row.Fields, "time-taken"),
                         GetRowValue(row.Fields, "cs(Referer)"),
-                        userAgent));
+                        userAgent,
+                        clientIp));
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException or ArgumentException)
@@ -144,11 +146,13 @@ public sealed class IisW3cLogSearcher
         IisErrorSearchOptions options,
         string url,
         string userAgent,
+        string clientIp,
         string combinedText)
     {
         return MatchesAny(combinedText, options.IisContainsPatterns) &&
                MatchesAny(userAgent, options.UserAgentPatterns) &&
-               MatchesAny(url, options.UrlPatterns);
+               MatchesAny(url, options.UrlPatterns) &&
+               MatchesAny(clientIp == "-" ? string.Empty : clientIp, options.IpPatterns);
     }
 
     private static string BuildUrl(IReadOnlyDictionary<string, string> row)
@@ -167,6 +171,7 @@ public sealed class IisW3cLogSearcher
         IReadOnlyDictionary<string, string> row,
         string url,
         string userAgent,
+        string clientIp,
         int status)
     {
         return string.Join(
@@ -174,6 +179,7 @@ public sealed class IisW3cLogSearcher
             [
                 GetRowValue(row, "cs-method"),
                 url,
+                clientIp,
                 GetRowValue(row, "cs(Referer)"),
                 userAgent,
                 status.ToString(CultureInfo.InvariantCulture),

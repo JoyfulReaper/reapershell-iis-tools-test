@@ -145,6 +145,11 @@ iis-error-search [options]
 | `--iis-contains <text>` | Search useful IIS row fields for text. | Can be repeated. Case-insensitive. |
 | `--user-agent <text>` | Search `cs(User-Agent)` for text. | Can be repeated. Case-insensitive. Alias: `--ua`. |
 | `--url <text>` | Search the combined IIS URL, including query string when present. | Can be repeated. Case-insensitive. |
+| `--ip <text>` | Search the IIS `c-ip` client IP field. | Can be repeated. Rows without `c-ip` do not match IP filters. |
+| `--compact` | Render IIS matches as a compact table. | Alias: `--table`. App/stdout matches still use detailed output. |
+| `--top <count>` | Control how many grouped summary entries are shown. | Valid range is `1` to `100`. Default: `10`. |
+| `--group-by <field>` | Add a grouped IIS summary. | Values: `status`, `url`, `user-agent`, `ua`, `agent`, `ip`, `referer`. Uses `--top`. |
+| `--hints` | Show short hints for common IIS status/substatus/Win32 values. | Detailed IIS output only. Default output is unchanged. |
 | `--last <count>` | Limit the number of newest results shown. | Applies separately to app/stdout results and IIS results. Default: `100`. |
 | `--newest-files-only` | Search only the newest files. | Uses `--newest-file-count` to decide how many files to keep. |
 | `--newest-file-count <n>` | Number of newest files to search when newest-only mode is enabled. | Default: `10`. |
@@ -158,7 +163,8 @@ iis-error-search [options]
 
 #### Behavior Notes
 
-- If you pass IIS text filters such as `--iis-contains`, `--user-agent`, or `--url` without `--status`, the command searches all IIS statuses by default.
+- If you pass IIS text filters such as `--iis-contains`, `--user-agent`, `--url`, or `--ip` without `--status`, the command searches all IIS statuses by default.
+- If you pass `--ip`, the command searches the IIS `c-ip` field when that field exists in the W3C header.
 - If you pass `--status`, it remains an explicit IIS status filter.
 - If you pass `--all-statuses`, IIS status filtering is disabled entirely.
 - `--status` and `--all-statuses` cannot be used together.
@@ -208,6 +214,11 @@ iis-error-search --last 50 --newest-first
 iis-error-search --iis-log "C:\inetpub\logs\LogFiles\W3SVC*\*.log"
 iis-error-search --app-log ".\logs\*.log" --pattern Exception
 iis-error-search --newest-files-only --newest-file-count 3
+iis-error-search --status 500 --compact
+iis-error-search --user-agent bot --group-by user-agent
+iis-error-search --status 404 --group-by url --top 20
+iis-error-search --ip 203.0.113 --newest-first
+iis-error-search --status 500 --hints
 iis-error-search --version
 iis-tools-version
 ```
@@ -220,6 +231,11 @@ iis-error-search --iis-contains bot --all-statuses
 iis-error-search --iis-log "C:\inetpub\logs\LogFiles\W3SVC*\*.log" --user-agent bot
 iis-error-search --since 2h --verbose
 iis-error-search --fail-on-match
+iis-error-search --status 500 --compact
+iis-error-search --user-agent bot --group-by user-agent
+iis-error-search --status 404 --group-by url --top 20
+iis-error-search --ip 203.0.113 --newest-first
+iis-error-search --status 500 --hints
 ```
 
 ## Understanding IIS W3C Logs
@@ -239,6 +255,7 @@ The command reads common fields such as:
 - `cs-method`
 - `cs-uri-stem`
 - `cs-uri-query`
+- `c-ip`
 - `cs(User-Agent)`
 - `cs(Referer)`
 - `sc-status`
@@ -268,6 +285,7 @@ Each IIS match includes:
 - HTTP status code
 - method
 - URL
+- client IP when the log includes `c-ip`
 - UTC date and time
 - status/substatus
 - Win32 status
@@ -278,9 +296,11 @@ Each IIS match includes:
 
 By default, each section is displayed oldest-to-newest after the newest `--last` matches are selected. Use `--newest-first` if you prefer the reverse order for troubleshooting.
 
+Use `--compact` or `--table` when you want IIS matches in a scan-friendly table with time, status, IP, method, URL, duration, and user-agent columns.
+
 ### Summary
 
-The summary groups IIS matches by HTTP status and then lists the most frequent URLs with per-URL status breakdowns.
+The summary groups IIS matches by HTTP status and then lists the most frequent URLs with per-URL status breakdowns. Use `--top <count>` to control the number of grouped rows. Use `--group-by` to group by another field while keeping the status-count summary.
 
 Example:
 

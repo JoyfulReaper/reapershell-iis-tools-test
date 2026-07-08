@@ -16,15 +16,15 @@ public sealed class IisToolsVersionCommand : IShellCommand
         IReadOnlyList<string> args,
         CancellationToken cancellationToken = default)
     {
-        var curse = CursedShellIntegration.TryGet(context);
-        if (curse?.IsEnabled == true)
-        {
-            curse.AddAmbientEvent("iis-tools-version revealed the loaded DLL's true name.");
-            curse.AddAmbientEvent("The curse compares branch metadata with theatrical suspicion.");
-        }
-
         if (args.Count == 0)
         {
+            var curse = CursedShellIntegration.TryGet(context);
+            if (curse?.IsEnabled == true)
+            {
+                curse.AddAmbientEvent("iis-tools-version revealed the loaded DLL's true name.");
+                curse.AddAmbientEvent("The curse compares branch metadata with theatrical suspicion.");
+            }
+
             VersionInfoWriter.Write(context, curse);
             return Task.FromResult(0);
         }

@@ -137,6 +137,37 @@ public sealed class IisW3cLogSearcherTests
         Assert.Equal("/second", match.Url);
     }
 
+    [Fact]
+    public void Search_ReadsClientIpWhenFieldExists()
+    {
+        using var temp = new TempDirectory();
+        var log = temp.WriteIisLogWithClientIp(
+            "u_ex.log",
+            TestLogData.W3cRowWithClientIp("2026-07-07", "12:00:01", "203.0.113.10", "GET", "/api/stats", "-", 500));
+
+        var matches = Search(log, new IisErrorSearchOptions());
+
+        var match = Assert.Single(matches);
+        Assert.Equal("203.0.113.10", match.ClientIp);
+    }
+
+    [Fact]
+    public void Search_IpFilterMatchesClientIp()
+    {
+        using var temp = new TempDirectory();
+        var log = temp.WriteIisLogWithClientIp(
+            "u_ex.log",
+            TestLogData.W3cRowWithClientIp("2026-07-07", "12:00:01", "203.0.113.10", "GET", "/api/stats", "-", 200),
+            TestLogData.W3cRowWithClientIp("2026-07-07", "12:00:02", "198.51.100.20", "GET", "/api/other", "-", 200));
+        var options = new IisErrorSearchOptions();
+        options.IpPatterns.Add("203.0.113");
+
+        var matches = Search(log, options);
+
+        var match = Assert.Single(matches);
+        Assert.Equal("/api/stats", match.Url);
+    }
+
     private static List<IisMatch> Search(FileInfo log, IisErrorSearchOptions options)
     {
         return new IisW3cLogSearcher(new IisW3cParser()).Search(

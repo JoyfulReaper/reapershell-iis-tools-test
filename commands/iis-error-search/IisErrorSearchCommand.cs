@@ -57,8 +57,11 @@ public sealed class IisErrorSearchCommand : IShellCommand
         if (isCursed)
         {
             curse!.AddAmbientEvent("iis-error-search opened the log crypt.");
-            curse.AddAmbientEvent("The IIS logs rustle like something with too many status codes.");
-            curse.AddAmbientEvent("A daemon checks the W3C fields and pretends this is normal.");
+            if (HasBotLikeFilter(options))
+            {
+                curse.ShiftMood("suspicious");
+                curse.AddAmbientEvent("Bot traffic search requested. The curse narrows its eyes.");
+            }
         }
 
         if (options.NewestFilesOnly)
@@ -95,8 +98,8 @@ public sealed class IisErrorSearchCommand : IShellCommand
             warningWriter,
             cancellationToken);
 
-        IisErrorSearchRenderer.WriteIisMatches(context, iisMatches);
-        IisErrorSearchRenderer.WriteSummary(context, iisMatches);
+        IisErrorSearchRenderer.WriteIisMatches(context, options, iisMatches);
+        IisErrorSearchRenderer.WriteSummary(context, options, iisMatches);
 
         if (isCursed)
         {
@@ -139,7 +142,6 @@ public sealed class IisErrorSearchCommand : IShellCommand
         if (HasBotLikeFilter(options))
         {
             curse.ShiftMood("suspicious");
-            curse.AddAmbientEvent("Bot traffic detected. The curse narrows its eyes.");
         }
 
         if (HasExceptionLikeAppMatches(appMatches))

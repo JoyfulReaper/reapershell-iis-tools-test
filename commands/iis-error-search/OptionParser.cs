@@ -31,9 +31,15 @@ public sealed class IisErrorSearchOptionsParser
         "--user-agent",
         "--ua",
         "--url",
+        "--ip",
         "--all-statuses",
         "--oldest-first",
-        "--newest-first"
+        "--newest-first",
+        "--compact",
+        "--table",
+        "--top",
+        "--group-by",
+        "--hints"
     };
 
     public bool TryParse(ShellContext context, IReadOnlyList<string> args, out IisErrorSearchOptions options)
@@ -137,7 +143,16 @@ public sealed class IisErrorSearchOptionsParser
                     {
                         if (!int.TryParse(statusPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out var statusCode))
                         {
-                            context.WriteErrorLine($"Invalid HTTP status code: {statusPart}. Status codes must be between 100 and 599.");
+                            context.WriteErrorLine($"Status code must be numeric: {statusPart}");
+                            if (statusPart.Contains("bot", StringComparison.OrdinalIgnoreCase))
+                            {
+                                context.WriteErrorLine("To search bot traffic, use --user-agent bot or --iis-contains bot.");
+                            }
+                            else
+                            {
+                                context.WriteErrorLine("Use explicit codes like --status 500,502,503.");
+                            }
+
                             return false;
                         }
 
@@ -233,6 +248,15 @@ public sealed class IisErrorSearchOptionsParser
                     options.UrlPatterns.Add(url);
                     break;
 
+                case "--ip":
+                    if (!TryReadOptionValue(context, args, ref index, arg, out var ip))
+                    {
+                        return false;
+                    }
+
+                    options.IpPatterns.Add(ip);
+                    break;
+
                 case "--all-statuses":
                     if (options.HasExplicitStatusFilter)
                     {
@@ -268,6 +292,39 @@ public sealed class IisErrorSearchOptionsParser
                     options.HasExplicitNewestFirst = true;
                     break;
 
+                case "--compact":
+                case "--table":
+                    options.CompactOutput = true;
+                    break;
+
+                case "--top":
+                    if (!TryReadBoundedInt(context, args, ref index, arg, 1, 100, out var top))
+                    {
+                        return false;
+                    }
+
+                    options.TopCount = top;
+                    break;
+
+                case "--group-by":
+                    if (!TryReadOptionValue(context, args, ref index, arg, out var groupBy))
+                    {
+                        return false;
+                    }
+
+                    if (!TryParseGroupBy(groupBy, out var parsedGroupBy))
+                    {
+                        context.WriteErrorLine($"Invalid value for --group-by: {groupBy}. Valid values: status, url, user-agent, ua, agent, ip, referer.");
+                        return false;
+                    }
+
+                    options.GroupBy = parsedGroupBy;
+                    break;
+
+                case "--hints":
+                    options.ShowHints = true;
+                    break;
+
                 default:
                     context.WriteErrorLine($"Unknown option: {arg}");
                     IisErrorSearchRenderer.WriteUsage(context);
@@ -276,6 +333,21 @@ public sealed class IisErrorSearchOptionsParser
         }
 
         return true;
+    }
+
+    private static bool TryParseGroupBy(string value, out IisSummaryGroupBy groupBy)
+    {
+        groupBy = value.ToLowerInvariant() switch
+        {
+            "status" => IisSummaryGroupBy.Status,
+            "url" => IisSummaryGroupBy.Url,
+            "user-agent" or "ua" or "agent" => IisSummaryGroupBy.UserAgent,
+            "ip" => IisSummaryGroupBy.Ip,
+            "referer" => IisSummaryGroupBy.Referer,
+            _ => (IisSummaryGroupBy)(-1)
+        };
+
+        return groupBy != (IisSummaryGroupBy)(-1);
     }
 
     private static bool TryReadOptionValue(
@@ -314,6 +386,33 @@ public sealed class IisErrorSearchOptionsParser
         if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) || value <= 0)
         {
             context.WriteErrorLine($"{optionName} must be a positive integer.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryReadBoundedInt(
+        ShellContext context,
+        IReadOnlyList<string> args,
+        ref int index,
+        string optionName,
+        int min,
+        int max,
+        out int value)
+    {
+        value = 0;
+
+        if (!TryReadOptionValue(context, args, ref index, optionName, out var rawValue))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) ||
+            value < min ||
+            value > max)
+        {
+            context.WriteErrorLine($"{optionName} must be a number between {min} and {max}.");
             return false;
         }
 

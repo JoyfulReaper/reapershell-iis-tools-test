@@ -59,6 +59,10 @@ public sealed class IisErrorSearchOptions
 
     public bool AllStatuses { get; set; }
 
+    public bool CompactOutput { get; set; }
+
+    public bool ShowHints { get; set; }
+
     public bool HasExplicitStatusFilter { get; set; }
 
     public MatchDisplayOrder DisplayOrder { get; set; } = MatchDisplayOrder.OldestFirst;
@@ -73,6 +77,12 @@ public sealed class IisErrorSearchOptions
 
     public List<string> UrlPatterns { get; } = [];
 
+    public List<string> IpPatterns { get; } = [];
+
+    public int TopCount { get; set; } = 10;
+
+    public IisSummaryGroupBy? GroupBy { get; set; }
+
     public DateTimeOffset? SinceUtc { get; set; }
 
     public string? SinceExpression { get; set; }
@@ -80,5 +90,6 @@ public sealed class IisErrorSearchOptions
     public bool HasIisTextFilters =>
         IisContainsPatterns.Count > 0 ||
         UserAgentPatterns.Count > 0 ||
-        UrlPatterns.Count > 0;
+        UrlPatterns.Count > 0 ||
+        IpPatterns.Count > 0;
 }

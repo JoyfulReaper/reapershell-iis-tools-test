@@ -16,4 +16,5 @@ public sealed record IisMatch(
     string Win32Status,
     string TimeTakenMs,
     string Referer,
-    string UserAgent);
+    string UserAgent,
+    string ClientIp);

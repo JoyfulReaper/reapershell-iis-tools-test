@@ -57,7 +57,7 @@ public static class IisErrorSearchRenderer
         }
     }
 
-    public static void WriteIisMatches(ShellContext context, IReadOnlyCollection<IisMatch> iisMatches)
+    public static void WriteIisMatches(ShellContext context, IisErrorSearchOptions options, IReadOnlyCollection<IisMatch> iisMatches)
     {
         WriteSection(context, "IIS LOG MATCHES");
 
@@ -67,12 +67,31 @@ public static class IisErrorSearchRenderer
             return;
         }
 
+        if (options.CompactOutput)
+        {
+            WriteCompactIisMatches(context, iisMatches);
+            return;
+        }
+
         foreach (var match in iisMatches)
         {
             context.WriteLine("");
             context.WriteLine($"HTTP {match.Status}  {SanitizeDisplay(match.Method)} {SanitizeDisplay(match.Url)}", GetStatusColor(match.Status));
             context.WriteLine($"  Time:       {SanitizeDisplay(match.Date)} {SanitizeDisplay(match.Time)} UTC");
             context.WriteLine($"  IIS:        {match.Status}.{SanitizeDisplay(match.SubStatus)}  Win32={SanitizeDisplay(match.Win32Status)}  Took={FormatTimeTaken(match.TimeTakenMs)}");
+            if (options.ShowHints)
+            {
+                foreach (var hint in IisStatusHintProvider.GetHints(match))
+                {
+                    context.WriteLine($"  Hint:       {hint}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(match.ClientIp) && match.ClientIp != "-")
+            {
+                context.WriteLine($"  IP:         {SanitizeDisplay(match.ClientIp)}");
+            }
+
             context.WriteLine($"  File:       {match.File}:{match.LineNumber}");
 
             if (!string.IsNullOrWhiteSpace(match.Referer) && match.Referer != "-")
@@ -87,7 +106,7 @@ public static class IisErrorSearchRenderer
         }
     }
 
-    public static void WriteSummary(ShellContext context, IReadOnlyCollection<IisMatch> iisMatches)
+    public static void WriteSummary(ShellContext context, IisErrorSearchOptions options, IReadOnlyCollection<IisMatch> iisMatches)
     {
         WriteSection(context, "SUMMARY");
 
@@ -106,15 +125,96 @@ public static class IisErrorSearchRenderer
 
         context.WriteLine("");
 
+        if (options.GroupBy is not null)
+        {
+            WriteGroupedSummary(context, iisMatches, options.GroupBy.Value, options.TopCount);
+            return;
+        }
+
+        WriteUrlSummary(context, iisMatches, options.TopCount);
+    }
+
+    private static void WriteCompactIisMatches(ShellContext context, IReadOnlyCollection<IisMatch> iisMatches)
+    {
+        context.WriteLine("Time                 Status  IP              Method  URL                              Took    Agent");
+        context.WriteLine("-------------------  ------  --------------  ------  -------------------------------  ------  --------------------");
+
+        foreach (var match in iisMatches)
+        {
+            var time = Truncate($"{SanitizeDisplay(match.Date)} {SanitizeDisplay(match.Time)}", 19);
+            var ip = Truncate(match.ClientIp == "-" ? string.Empty : SanitizeDisplay(match.ClientIp), 14);
+            var method = Truncate(SanitizeDisplay(match.Method), 6);
+            var url = Truncate(SanitizeDisplay(match.Url), 31);
+            var took = Truncate(FormatTimeTaken(match.TimeTakenMs), 6);
+            var agent = Truncate(match.UserAgent == "-" ? string.Empty : SanitizeDisplay(match.UserAgent), 20);
+
+            context.WriteLine($"{time,-19}  {match.Status,6}  {ip,-14}  {method,-6}  {url,-31}  {took,-6}  {agent}");
+        }
+    }
+
+    private static void WriteUrlSummary(ShellContext context, IReadOnlyCollection<IisMatch> iisMatches, int topCount)
+    {
         foreach (var group in iisMatches
                      .GroupBy(match => match.Url)
                      .OrderByDescending(group => group.Count())
                      .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-                     .Take(10))
+                     .Take(topCount))
         {
             var statusBreakdown = FormatStatusBreakdown(group);
             context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)} ({statusBreakdown})", GetWorstStatusColor(group));
         }
+    }
+
+    private static void WriteGroupedSummary(
+        ShellContext context,
+        IReadOnlyCollection<IisMatch> iisMatches,
+        IisSummaryGroupBy groupBy,
+        int topCount)
+    {
+        context.WriteLine(GetGroupTitle(groupBy));
+
+        foreach (var group in GetGroupValues(iisMatches, groupBy)
+                     .GroupBy(value => value, StringComparer.OrdinalIgnoreCase)
+                     .OrderByDescending(group => group.Count())
+                     .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+                     .Take(topCount))
+        {
+            context.WriteLine($"{group.Count()}x  {SanitizeDisplay(group.Key)}");
+        }
+    }
+
+    private static IEnumerable<string> GetGroupValues(IEnumerable<IisMatch> matches, IisSummaryGroupBy groupBy)
+    {
+        foreach (var match in matches)
+        {
+            var value = groupBy switch
+            {
+                IisSummaryGroupBy.Status => match.Status.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                IisSummaryGroupBy.Url => match.Url,
+                IisSummaryGroupBy.UserAgent => match.UserAgent,
+                IisSummaryGroupBy.Ip => match.ClientIp,
+                IisSummaryGroupBy.Referer => match.Referer,
+                _ => string.Empty
+            };
+
+            if (!string.IsNullOrWhiteSpace(value) && value != "-")
+            {
+                yield return value;
+            }
+        }
+    }
+
+    private static string GetGroupTitle(IisSummaryGroupBy groupBy)
+    {
+        return groupBy switch
+        {
+            IisSummaryGroupBy.Status => "GROUPED BY STATUS",
+            IisSummaryGroupBy.Url => "GROUPED BY URL",
+            IisSummaryGroupBy.UserAgent => "GROUPED BY USER-AGENT",
+            IisSummaryGroupBy.Ip => "GROUPED BY IP",
+            IisSummaryGroupBy.Referer => "GROUPED BY REFERER",
+            _ => "GROUPED"
+        };
     }
 
     public static void WriteUsage(ShellContext context)
@@ -132,6 +232,11 @@ public static class IisErrorSearchRenderer
         context.WriteLine("  --user-agent <text>          Search decoded IIS user-agent text. Can be repeated.");
         context.WriteLine("  --ua <text>                  Alias for --user-agent.");
         context.WriteLine("  --url <text>                 Search the combined IIS URL. Can be repeated.");
+        context.WriteLine("  --ip <text>                  Search IIS client IP (c-ip). Can be repeated.");
+        context.WriteLine("  --compact                    Render IIS matches as a compact table. Alias: --table.");
+        context.WriteLine("  --top <count>                Number of summary groups to show, 1-100. Default: 10.");
+        context.WriteLine("  --group-by <field>           Group summary by status, url, user-agent, ip, or referer.");
+        context.WriteLine("  --hints                      Show short IIS status hints with detailed matches.");
         context.WriteLine("  --last <count>               Number of newest results to show per section. Default: 100.");
         context.WriteLine("  --oldest-first               Display selected matches oldest-to-newest. Default.");
         context.WriteLine("  --newest-first               Display selected matches newest-to-oldest.");
@@ -149,6 +254,8 @@ public static class IisErrorSearchRenderer
         context.WriteLine("  iis-error-search --status 404,500");
         context.WriteLine("  iis-error-search --last 50");
         context.WriteLine("  iis-error-search --last 50 --newest-first");
+        context.WriteLine("  iis-error-search --status 500 --compact");
+        context.WriteLine("  iis-error-search --status 404 --group-by url --top 20");
         context.WriteLine("  iis-error-search --user-agent bot");
         context.WriteLine("  iis-error-search --iis-contains bot --all-statuses");
         context.WriteLine("  iis-error-search --iis-log \"C:\\inetpub\\logs\\LogFiles\\W3SVC*\\*.log\" --user-agent bot");
@@ -188,6 +295,7 @@ public static class IisErrorSearchRenderer
         if (options.IisContainsPatterns.Count == 0 &&
             options.UserAgentPatterns.Count == 0 &&
             options.UrlPatterns.Count == 0 &&
+            options.IpPatterns.Count == 0 &&
             !options.AllStatuses &&
             !options.HasExplicitStatusFilter)
         {
@@ -221,6 +329,11 @@ public static class IisErrorSearchRenderer
         if (options.UrlPatterns.Count > 0)
         {
             context.WriteLine($"IIS URL: {string.Join(", ", options.UrlPatterns)}");
+        }
+
+        if (options.IpPatterns.Count > 0)
+        {
+            context.WriteLine($"IIS IP: {string.Join(", ", options.IpPatterns)}");
         }
     }
 
@@ -340,5 +453,17 @@ public static class IisErrorSearchRenderer
         }
 
         return builder.ToString();
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return maxLength <= 1
+            ? value[..maxLength]
+            : value[..(maxLength - 1)] + "~";
     }
 }

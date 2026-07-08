@@ -28,6 +28,42 @@ public sealed class IisToolsVersionCommandTests
     }
 
     [Fact]
+    public async Task CursedNoArgsAddsAmbientEvents()
+    {
+        using var temp = new TempDirectory();
+        var curse = new FakeCursedShell(isEnabled: true);
+
+        var result = await CommandTestHost.ExecuteVersionCommandAsync(temp.Directory, new FakeServiceProvider(curse));
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.NotEmpty(curse.Events);
+    }
+
+    [Fact]
+    public async Task CursedHelpDoesNotAddAmbientEvents()
+    {
+        using var temp = new TempDirectory();
+        var curse = new FakeCursedShell(isEnabled: true);
+
+        var result = await CommandTestHost.ExecuteVersionCommandAsync(temp.Directory, new FakeServiceProvider(curse), "--help");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Empty(curse.Events);
+    }
+
+    [Fact]
+    public async Task CursedInvalidArgDoesNotAddAmbientEvents()
+    {
+        using var temp = new TempDirectory();
+        var curse = new FakeCursedShell(isEnabled: true);
+
+        var result = await CommandTestHost.ExecuteVersionCommandAsync(temp.Directory, new FakeServiceProvider(curse), "--bad");
+
+        Assert.Equal(1, result.ExitCode);
+        Assert.Empty(curse.Events);
+    }
+
+    [Fact]
     public async Task UnknownArgReturnsOne()
     {
         using var temp = new TempDirectory();
