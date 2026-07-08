@@ -125,7 +125,7 @@ public static class IisErrorSearchRenderer
 
         context.WriteLine("");
 
-        if (options.GroupBy is not null)
+        if (options.GroupBy is not null && options.GroupBy != IisSummaryGroupBy.Status)
         {
             WriteGroupedSummary(context, iisMatches, options.GroupBy.Value, options.TopCount);
             return;
@@ -148,7 +148,7 @@ public static class IisErrorSearchRenderer
             var took = Truncate(FormatTimeTaken(match.TimeTakenMs), 6);
             var agent = Truncate(match.UserAgent == "-" ? string.Empty : SanitizeDisplay(match.UserAgent), 20);
 
-            context.WriteLine($"{time,-19}  {match.Status,6}  {ip,-14}  {method,-6}  {url,-31}  {took,-6}  {agent}");
+            context.WriteLine($"{time,-19}  {match.Status,6}  {ip,-14}  {method,-6}  {url,-31}  {took,-6}  {agent}", GetStatusColor(match.Status));
         }
     }
 

@@ -27,6 +27,22 @@ public sealed class IisErrorSearchCommandTests
     }
 
     [Fact]
+    public async Task CursedVersionUsesIisErrorSearchEventName()
+    {
+        using var temp = new TempDirectory();
+        var curse = new FakeCursedShell(isEnabled: true);
+
+        var result = await CommandTestHost.ExecuteSearchCommandAsync(
+            temp.Directory,
+            new FakeServiceProvider(curse),
+            "--version");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("iis-error-search --version revealed the loaded DLL's true name.", curse.Events);
+        Assert.DoesNotContain("iis-tools-version revealed the loaded DLL's true name.", curse.Events);
+    }
+
+    [Fact]
     public async Task UnknownOptionReturnsOne()
     {
         using var temp = new TempDirectory();
@@ -285,8 +301,20 @@ public sealed class IisErrorSearchCommandTests
         Assert.Contains("--top must be a number between 1 and 100.", result.StdErr);
     }
 
+    [Fact]
+    public async Task GroupByStatusPrintsStatusCountsWithoutDuplicateGroupedSection()
+    {
+        using var temp = new TempDirectory();
+        var iisLog = temp.WriteIisLog("iis/u_ex.log", TestLogData.W3cRow("2026-07-07", "12:00:01", "GET", "/api/stats", "-", 500));
+
+        var result = await CommandTestHost.ExecuteSearchCommandAsync(temp.Directory, "--iis-log", iisLog.FullName, "--status", "500", "--group-by", "status");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("HTTP 500: 1", result.StdOut);
+        Assert.DoesNotContain("GROUPED BY STATUS", result.StdOut);
+    }
+
     [Theory]
-    [InlineData("status", "GROUPED BY STATUS", "500")]
     [InlineData("url", "GROUPED BY URL", "/api/stats")]
     [InlineData("user-agent", "GROUPED BY USER-AGENT", "Googlebot")]
     [InlineData("ip", "GROUPED BY IP", "203.0.113.10")]
@@ -302,6 +330,37 @@ public sealed class IisErrorSearchCommandTests
         Assert.Equal(0, result.ExitCode);
         Assert.Contains(heading, result.StdOut);
         Assert.Contains(expectedValue, result.StdOut);
+    }
+
+    [Fact]
+    public async Task GroupByRefererPrintsHeadingAndExpectedReferer()
+    {
+        using var temp = new TempDirectory();
+        var iisLog = temp.WriteIisLog(
+            "iis/u_ex.log",
+            TestLogData.W3cRow("2026-07-07", "12:00:01", "GET", "/api/stats", "-", 500, referer: "https://example.test/start"),
+            TestLogData.W3cRow("2026-07-07", "12:00:02", "GET", "/api/stats", "-", 500, referer: "https://example.test/start"));
+
+        var result = await CommandTestHost.ExecuteSearchCommandAsync(temp.Directory, "--iis-log", iisLog.FullName, "--status", "500", "--group-by", "referer");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("GROUPED BY REFERER", result.StdOut);
+        Assert.Contains("https://example.test/start", result.StdOut);
+    }
+
+    [Fact]
+    public async Task TopLimitsRefererGroupRows()
+    {
+        using var temp = new TempDirectory();
+        var iisLog = temp.WriteIisLog(
+            "iis/u_ex.log",
+            TestLogData.W3cRow("2026-07-07", "12:00:01", "GET", "/first", "-", 500, referer: "https://example.test/first"),
+            TestLogData.W3cRow("2026-07-07", "12:00:02", "GET", "/second", "-", 500, referer: "https://example.test/second"));
+
+        var result = await CommandTestHost.ExecuteSearchCommandAsync(temp.Directory, "--iis-log", iisLog.FullName, "--status", "500", "--group-by", "referer", "--top", "1");
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(1, CountGroupedRows(result.StdOut));
     }
 
     [Fact]
@@ -392,7 +451,7 @@ public sealed class IisErrorSearchCommandTests
 
     private static int CountGroupedRows(string output)
     {
-        return output.Split('\n').Count(line => line.StartsWith("1x  /", StringComparison.Ordinal));
+        return output.Split('\n').Count(line => line.StartsWith("1x  ", StringComparison.Ordinal));
     }
 
     private sealed class FakeServiceProvider(ICursedShell curse) : IServiceProvider

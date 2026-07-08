@@ -34,7 +34,7 @@ public sealed class IisErrorSearchCommand : IShellCommand
             var versionCurse = CursedShellIntegration.TryGet(context);
             if (versionCurse?.IsEnabled == true)
             {
-                versionCurse.AddAmbientEvent("iis-tools-version revealed the loaded DLL's true name.");
+                versionCurse.AddAmbientEvent("iis-error-search --version revealed the loaded DLL's true name.");
                 versionCurse.AddAmbientEvent("The curse compares branch metadata with theatrical suspicion.");
             }
 
